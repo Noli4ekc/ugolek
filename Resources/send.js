@@ -204,13 +204,59 @@
     };
   }
 
+  function chatPane() {
+    return (
+      document.querySelector("[data-e2e='chat-message-list']") ||
+      document.querySelector("[data-e2e='chat-message']")?.closest('div[class]') ||
+      document.body
+    );
+  }
+
+  async function verifySent(text) {
+    const pane = chatPane();
+    for (let poll = 0; poll < CFG.verifyPolls; poll++) {
+      await sleep(CFG.verifyPollMs);
+      const bubbles = pane.querySelectorAll("[data-e2e='chat-message'], [data-e2e*='message-item']");
+      for (const bubble of bubbles) {
+        if ((bubble.innerText || '').includes(text)) return true;
+      }
+      if (bubbles.length === 0 && (pane.innerText || '').includes(text)) return true;
+    }
+    return false;
+  }
+
   async function run(payload) {
-    post({
-      type: 'result',
-      username: payload.username,
-      ok: false,
-      error: 'Верификация пока не реализована',
-    });
+    const username = payload.username || '';
+    try {
+      log('Ищу чат: ' + username);
+      await findAndOpenChat(username, !!payload.isGroup);
+
+      if (payload.dryRun) {
+        log('Пробный режим: чат открыт, отправка пропущена');
+        post({ type: 'result', username, ok: true, detail: 'пробный режим' });
+        return;
+      }
+
+      await typeMessage(payload.message || '');
+      await clickSend();
+      await sleep(CFG.sendConfirmMs);
+
+      const verified = await verifySent(payload.message || '');
+      if (verified) {
+        log('Отправка подтверждена');
+        post({ type: 'result', username, ok: true, detail: 'подтверждено' });
+      } else {
+        log('Отправлено, но подтверждение не увидено');
+        post({ type: 'result', username, ok: true, detail: 'отправлено без подтверждения' });
+      }
+    } catch (err) {
+      post({
+        type: 'result',
+        username,
+        ok: false,
+        error: String((err && err.message) || err),
+      });
+    }
   }
 
   window.Ugolek = { log, discovery, run };
