@@ -155,7 +155,7 @@
       "id": "12",
       "title": "Экран логина TikTok (WKWebView, десктопный UA)",
       "description": "Загрузка tiktok.com/login; детект успешного входа (sessionid / уход со страницы логина).",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         "11"
       ],
@@ -163,20 +163,21 @@
       "details": "Коммит: feat: TikTok login screen",
       "testStrategy": "Логин на реальном iPhone проходит",
       "subtasks": [],
-      "updatedAt": "2026-08-21T22:37:57.469Z"
+      "updatedAt": "2026-08-21T22:52:58.929Z"
     },
     {
       "id": "13",
       "title": "Сессия в Keychain + индикатор + выход. Тег m2-session",
       "description": "sessionid + User-Agent в Keychain; индикатор сессии на Главной; кнопка выхода.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "12"
       ],
       "priority": "medium",
       "details": "Коммит: feat: session persistence in Keychain. Тег: m2-session",
       "testStrategy": "После перезапуска сессия жива",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:52:58.952Z"
     },
     {
       "id": "14",
@@ -428,9 +429,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T22:37:57.469Z",
+    "lastModified": "2026-08-21T22:52:58.953Z",
     "taskCount": 32,
-    "completedCount": 9,
+    "completedCount": 11,
     "tags": [
       "master"
     ]

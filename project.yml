@@ -14,6 +14,8 @@ targets:
     platform: iOS
     sources:
       - path: Ugolek
+      - path: Resources
+        buildPhase: resources
     info:
       path: Ugolek/Info.plist
       properties:
