@@ -57,6 +57,58 @@
     return '';
   }
 
+  function handleFromItem(item) {
+    const link = item.querySelector("a[href*='/@']");
+    if (!link) return null;
+    const match = link.getAttribute('href').match(/@([^/?#]+)/);
+    return match ? match[1].toLowerCase() : null;
+  }
+
+  function scrollContainerOf(item) {
+    let node = item;
+    while (node && node !== document.body) {
+      if (node.scrollHeight > node.clientHeight + 8) return node;
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  async function findAndOpenChat(username, isGroup) {
+    const wanted = String(username).toLowerCase();
+    for (let step = 0; step <= CFG.scrollMaxSteps; step++) {
+      const list = chatList();
+      if (!list) throw new Error('Список чатов не найден на странице');
+
+      for (const item of list.items) {
+        let matches = false;
+        if (isGroup) {
+          matches = itemTitle(item).toLowerCase() === wanted;
+        } else {
+          const handle = handleFromItem(item);
+          if (handle) matches = handle === wanted;
+        }
+        if (matches) {
+          item.click();
+          await sleep(CFG.clickWaitMs);
+          return;
+        }
+      }
+
+      const container = scrollContainerOf(list.items[0]);
+      if (!container) throw new Error('Не найден контейнер прокрутки списка чатов');
+
+      const before = container.scrollTop;
+      container.scrollTop = before + container.clientHeight * 2;
+      container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      await sleep(CFG.scrollStepMs);
+
+      if (container.scrollTop === before && step > 0) {
+        throw new Error('Пользователь не найден в списке чатов');
+      }
+    }
+    throw new Error('Пользователь не найден в списке чатов');
+  }
+
   function discovery() {
     const list = chatList();
     return {
@@ -69,6 +121,15 @@
     };
   }
 
-  window.Ugolek = { log, discovery };
+  async function run(payload) {
+    post({
+      type: 'result',
+      username: payload.username,
+      ok: false,
+      error: 'Ввод и отправка пока не реализованы',
+    });
+  }
+
+  window.Ugolek = { log, discovery, run };
   log('Скрипт загружен и ждёт команд');
 })();
