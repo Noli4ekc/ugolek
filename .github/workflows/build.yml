@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-check:
+    name: Compile check (simulator, debug)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for iOS Simulator
+        run: >
+          xcodebuild -project Ugolek.xcodeproj
+          -scheme Ugolek
+          -destination 'generic/platform=iOS Simulator'
+          -configuration Debug
+          -derivedDataPath dd
+          CODE_SIGNING_ALLOWED=NO
+          build -quiet
+
+      - name: Zip simulator .app (for Appetize.io)
+        run: |
+          cd dd/Build/Products/Debug-iphonesimulator
+          zip -qry "${GITHUB_WORKSPACE}/Ugolek-simulator.zip" Ugolek.app
+
+      - name: Upload simulator zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ugolek-simulator
+          path: Ugolek-simulator.zip
+          retention-days: 30
+
+  ipa:
+    name: Unsigned IPA (for AltStore)
+    runs-on: macos-15
+    needs: compile-check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Archive (device, release, unsigned)
+        run: >
+          xcodebuild -project Ugolek.xcodeproj
+          -scheme Ugolek
+          -destination 'generic/platform=iOS'
+          -configuration Release
+          -archivePath build/Ugolek.xcarchive
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          archive -quiet
+
+      - name: Pack unsigned IPA
+        run: |
+          mkdir Payload
+          cp -R "build/Ugolek.xcarchive/Products/Applications/Ugolek.app" Payload/
+          zip -qry Ugolek-unsigned.ipa Payload
+          ls -lh Ugolek-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ugolek-unsigned-ipa
+          path: Ugolek-unsigned.ipa
+          retention-days: 30

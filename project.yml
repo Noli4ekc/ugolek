@@ -22,3 +22,13 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+schemes:
+  Ugolek:
+    build:
+      targets:
+        Ugolek: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+
