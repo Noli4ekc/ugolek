@@ -77,7 +77,7 @@ struct RunDetailView: View {
                 }
             }
         }
-        .navigationTitle(run.date, format: .dateTime.day().month().hour().minute())
+        .navigationTitle(Text(run.date, format: .dateTime.day().month().hour().minute()))
         .navigationBarTitleDisplayMode(.inline)
     }
 
