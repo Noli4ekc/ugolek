@@ -29,14 +29,15 @@
       "id": "3",
       "title": "Каркас приложения: project.yml (XcodeGen) + SwiftUI-скелет",
       "description": "XcodeGen-проект (iOS 17, только iPhone), минимальное SwiftUI-приложение «Привет, Уголёк!».",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "2"
       ],
       "priority": "high",
       "details": "Коммит: feat: minimal SwiftUI app skeleton",
       "testStrategy": "CI-сборка проходит",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T21:40:30.124Z"
     },
     {
       "id": "4",
@@ -418,7 +419,7 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T21:38:43.560Z",
+    "lastModified": "2026-08-21T21:40:30.125Z",
     "taskCount": 32,
     "completedCount": 2,
     "tags": [
