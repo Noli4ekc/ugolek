@@ -113,53 +113,57 @@
       "id": "9",
       "title": "Экран «Друзья»: CRUD, вкл/выкл, поиск, флаг «группа»",
       "description": "Список друзей с добавлением/редактированием/удалением.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "8"
       ],
       "priority": "medium",
       "details": "Коммит: feat: friends list with add/edit/delete",
       "testStrategy": "CRUD работает в Appetize, данные сохраняются между запусками",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:31:37.429Z"
     },
     {
       "id": "10",
       "title": "Экран «Настройки»",
       "description": "Текст сообщения, время ежедневного запуска, тумблеры (случайные фразы, пропускать недоступных).",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "9"
       ],
       "priority": "medium",
       "details": "Коммит: feat: settings screen",
       "testStrategy": "Настройки сохраняются",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:31:37.454Z"
     },
     {
       "id": "11",
       "title": "Экран «История» — заготовка + тег m1-skeleton",
       "description": "Пустое состояние и структура под будущие данные.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "10"
       ],
       "priority": "medium",
       "details": "Коммит: feat: history screen placeholder. Тег: m1-skeleton",
       "testStrategy": "Экран открывается",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:31:37.482Z"
     },
     {
       "id": "12",
       "title": "Экран логина TikTok (WKWebView, десктопный UA)",
       "description": "Загрузка tiktok.com/login; детект успешного входа (sessionid / уход со страницы логина).",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "11"
       ],
       "priority": "medium",
       "details": "Коммит: feat: TikTok login screen",
       "testStrategy": "Логин на реальном iPhone проходит",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:37:57.469Z"
     },
     {
       "id": "13",
@@ -424,9 +428,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T22:28:53.861Z",
+    "lastModified": "2026-08-21T22:37:57.469Z",
     "taskCount": 32,
-    "completedCount": 6,
+    "completedCount": 9,
     "tags": [
       "master"
     ]
