@@ -371,14 +371,15 @@
       "id": "28",
       "title": "Самодиагностика «Проверить совместимость». Тег m5-reliability",
       "description": "Сухой прогон без отправки, отчёт на каком шаге ломается.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "27"
       ],
       "priority": "medium",
       "details": "Коммит: feat: compatibility self-test. Тег: m5-reliability",
       "testStrategy": "Отчёт показывает статус каждого шага",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T23:51:15.438Z"
     },
     {
       "id": "29",
@@ -435,7 +436,7 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T23:01:39.558Z",
+    "lastModified": "2026-08-21T23:51:15.438Z",
     "taskCount": 32,
     "completedCount": 17,
     "tags": [
