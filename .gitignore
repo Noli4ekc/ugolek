@@ -1,0 +1,28 @@
+# Xcode (проект генерируется XcodeGen из project.yml — .xcodeproj в гите не нужен)
+.xcodeproj/
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/contents.xcworkspacedata
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Локальные артефакты сборки
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Секреты и локальные настройки
+*.env
+.env.*
+
+# Task Master — служебные внутренности (сам tasks.json коммитим)
+.taskmaster/cache/
+.taskmaster/logs/
+.taskmaster/reports/
