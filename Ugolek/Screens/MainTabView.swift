@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         TabView {
             HomeView()
@@ -11,6 +13,16 @@ struct MainTabView: View {
                 .tabItem { Label("История", systemImage: "clock.arrow.circlepath") }
             SettingsView()
                 .tabItem { Label("Настройки", systemImage: "gearshape.fill") }
+        }
+        .onAppear {
+            ReminderService.shared.requestAndScheduleDaily()
+            RunCoordinator.shared.consumePendingAutoRunIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                ReminderService.shared.scheduleDaily()
+                RunCoordinator.shared.consumePendingAutoRunIfNeeded()
+            }
         }
     }
 }

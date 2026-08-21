@@ -1,22 +1,16 @@
 import SwiftUI
-import UIKit
 
 struct HomeView: View {
     @State private var store = AppStore.shared
     @State private var session = SessionStore.shared
+    @State private var coordinator = RunCoordinator.shared
     @State private var showingLogin = false
     @State private var confirmLogout = false
-
-    @State private var runActive = false
-    @State private var progressText = ""
-    @State private var progressDone = 0
-    @State private var progressTotal = 0
-    @State private var runSummary: RunRecord?
-    @State private var showSummary = false
     @State private var diagActive = false
     @State private var diagText: String?
 
     var body: some View {
+        @Bindable var coordinator = coordinator
         NavigationStack {
             List {
                 Section {
@@ -57,7 +51,7 @@ struct HomeView: View {
                 Section {
                     VStack(spacing: 10) {
                         Button {
-                            startRun()
+                            coordinator.start()
                         } label: {
                             Label("Продлить сейчас", systemImage: "flame.fill")
                                 .frame(maxWidth: .infinity)
@@ -65,7 +59,7 @@ struct HomeView: View {
                         .controlSize(.large)
                         .buttonStyle(.borderedProminent)
                         .tint(.orange)
-                        .disabled(!session.isLoggedIn || runActive)
+                        .disabled(!session.isLoggedIn || coordinator.runActive)
 
                         Text(statusLine)
                             .font(.caption)
@@ -95,13 +89,17 @@ struct HomeView: View {
                 }
                 Button("Отмена", role: .cancel) {}
             }
-            .fullScreenCover(isPresented: $runActive) {
-                RunOverlay(text: progressText, done: progressDone, total: progressTotal)
+            .fullScreenCover(isPresented: $coordinator.runActive) {
+                RunOverlay(
+                    text: coordinator.progressText,
+                    done: coordinator.progressDone,
+                    total: coordinator.progressTotal
+                )
             }
-            .alert("Готово", isPresented: $showSummary) {
+            .alert("Готово", isPresented: $coordinator.showSummary) {
                 Button("Ок", role: .cancel) {}
             } message: {
-                if let run = runSummary {
+                if let run = coordinator.lastSummary {
                     if run.failedCount > 0,
                        let firstError = run.results.first(where: { $0.status == .failed })?.detail {
                         Text("Отправлено: \(run.sentCount), ошибок: \(run.failedCount). Первая ошибка: \(firstError). Подробности — во вкладке «История».")
@@ -120,26 +118,10 @@ struct HomeView: View {
     }
 
     private var statusLine: String {
-        if runActive { return "Идёт прогон…" }
+        if coordinator.runActive { return "Идёт прогон…" }
         if !session.isLoggedIn { return "Сначала войди в TikTok" }
         if store.friendsDueToday.isEmpty { return "Сегодня всё отправлено 🔥" }
         return "Отправит сообщение \(store.friendsDueToday.count) друзьям"
-    }
-
-    private func startRun() {
-        runActive = true
-        UIApplication.shared.isIdleTimerDisabled = true
-        Task {
-            let record = await StreakEngine.run { update in
-                progressText = update.text
-                progressDone = update.done
-                progressTotal = update.total
-            }
-            UIApplication.shared.isIdleTimerDisabled = false
-            runActive = false
-            runSummary = record
-            showSummary = !record.results.isEmpty
-        }
     }
 
     private func runDiagnostics() {
