@@ -71,7 +71,7 @@
       "id": "6",
       "title": "INSTALL.md + КОНТРОЛЬНАЯ ТОЧКА: приложение на iPhone и в браузере",
       "description": "Инструкция AltServer/AltStore и Appetize.io; пользователь подтверждает запуск на телефоне и в браузере.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         "5"
       ],
@@ -79,20 +79,21 @@
       "details": "Коммит: docs: installation guide (AltStore + browser preview). Дальше не идём без подтверждения пользователя.",
       "testStrategy": "Приложение открылось на iPhone и в Appetize.io",
       "subtasks": [],
-      "updatedAt": "2026-08-21T21:58:37.157Z"
+      "updatedAt": "2026-08-21T22:24:31.013Z"
     },
     {
       "id": "7",
       "title": "Модели данных и локальное хранение",
       "description": "Friend (id, handle, label, isEnabled, isGroup, lastSentDay, sentCount, failCount), RunRecord, AppSettings; JSON+Codable в Documents.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "6"
       ],
       "priority": "medium",
       "details": "Коммит: feat: data models and local store",
       "testStrategy": "Данные сохраняются между запусками (проверка в Appetize)",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:24:31.045Z"
     },
     {
       "id": "8",
@@ -422,9 +423,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T21:58:37.157Z",
+    "lastModified": "2026-08-21T22:24:31.046Z",
     "taskCount": 32,
-    "completedCount": 4,
+    "completedCount": 5,
     "tags": [
       "master"
     ]
