@@ -39,12 +39,16 @@ final class SessionStore {
     func logout() {
         KeychainStore.remove(forKey: Self.sessionKey)
         KeychainStore.remove(forKey: Self.uaKey)
-        let store = WKWebsiteDataStore.default()
-        store.fetchDataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()) { records in
+        let dataStore = WKWebsiteDataStore.default()
+        Task {
+            let records = await dataStore.dataRecords()
             let tiktokRecords = records.filter {
                 $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
             }
-            store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: tiktokRecords)
+            await dataStore.removeData(
+                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+                for: tiktokRecords
+            )
         }
         refresh()
     }

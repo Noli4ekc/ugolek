@@ -31,7 +31,7 @@ struct TikTokLoginWebView: UIViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.customUserAgent = SessionStore.savedUserAgent
+        webView.customUserAgent = SessionStore.shared.savedUserAgent
         webView.navigationDelegate = context.coordinator
         if let url = URL(string: "https://www.tiktok.com/login?lang=ru") {
             webView.load(URLRequest(url: url))
