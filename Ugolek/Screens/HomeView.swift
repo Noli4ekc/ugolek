@@ -13,6 +13,8 @@ struct HomeView: View {
     @State private var progressTotal = 0
     @State private var runSummary: RunRecord?
     @State private var showSummary = false
+    @State private var diagActive = false
+    @State private var diagText: String?
 
     var body: some View {
         NavigationStack {
@@ -68,6 +70,16 @@ struct HomeView: View {
                         Text(statusLine)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+
+                        Button {
+                            runDiagnostics()
+                        } label: {
+                            Label("Диагностика", systemImage: "stethoscope")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+                        .disabled(diagActive || !session.isLoggedIn)
                     }
                 } header: {
                     Text("Огонёк")
@@ -90,8 +102,19 @@ struct HomeView: View {
                 Button("Ок", role: .cancel) {}
             } message: {
                 if let run = runSummary {
-                    Text("Отправлено: \(run.sentCount), ошибок: \(run.failedCount)")
+                    if run.failedCount > 0,
+                       let firstError = run.results.first(where: { $0.status == .failed })?.detail {
+                        Text("Отправлено: \(run.sentCount), ошибок: \(run.failedCount). Первая ошибка: \(firstError). Подробности — во вкладке «История».")
+                    } else {
+                        Text("Отправлено: \(run.sentCount), ошибок: \(run.failedCount)")
+                    }
                 }
+            }
+            .sheet(item: Binding(
+                get: { diagText.map { DiagReport(text: $0) } },
+                set: { _ in diagText = nil }
+            )) { report in
+                DiagSheet(text: report.text)
             }
         }
     }
@@ -116,6 +139,57 @@ struct HomeView: View {
             runActive = false
             runSummary = record
             showSummary = !record.results.isEmpty
+        }
+    }
+
+    private func runDiagnostics() {
+        diagActive = true
+        Task {
+            var report: String
+            do {
+                try await InboxRunner.shared.ensureLoaded()
+                let raw = await InboxRunner.shared.discovery()
+                if let data = raw.data(using: .utf8),
+                   let object = try? JSONSerialization.jsonObject(with: data),
+                   let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+                   let text = String(data: pretty, encoding: .utf8) {
+                    report = text
+                } else {
+                    report = raw
+                }
+            } catch {
+                report = "Не удалось загрузить страницу сообщений:\n\((error as? LocalizedError)?.errorDescription ?? String(describing: error))"
+            }
+            diagText = report
+            diagActive = false
+        }
+    }
+}
+
+struct DiagReport: Identifiable {
+    let text: String
+    var id: String { text }
+}
+
+struct DiagSheet: View {
+    let text: String
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 13, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .textSelection(.enabled)
+            }
+            .navigationTitle("Диагностика")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Закрыть") { }
+                }
+            }
         }
     }
 }
