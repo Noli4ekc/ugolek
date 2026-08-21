@@ -41,7 +41,9 @@ final class SessionStore {
         KeychainStore.remove(forKey: Self.uaKey)
         let dataStore = WKWebsiteDataStore.default()
         Task {
-            let records = await dataStore.dataRecords()
+            let records = await dataStore.dataRecords(
+                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()
+            )
             let tiktokRecords = records.filter {
                 $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
             }
