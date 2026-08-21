@@ -85,7 +85,7 @@
       "id": "7",
       "title": "Модели данных и локальное хранение",
       "description": "Friend (id, handle, label, isEnabled, isGroup, lastSentDay, sentCount, failCount), RunRecord, AppSettings; JSON+Codable в Documents.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         "6"
       ],
@@ -93,20 +93,21 @@
       "details": "Коммит: feat: data models and local store",
       "testStrategy": "Данные сохраняются между запусками (проверка в Appetize)",
       "subtasks": [],
-      "updatedAt": "2026-08-21T22:24:31.045Z"
+      "updatedAt": "2026-08-21T22:28:53.780Z"
     },
     {
       "id": "8",
       "title": "TabView с 4 вкладками (Главная, Друзья, История, Настройки)",
       "description": "Нативная навигация, экраны-заглушки.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "7"
       ],
       "priority": "medium",
       "details": "Коммит: feat: tab navigation with 4 screens",
       "testStrategy": "Переключение вкладок работает в Appetize",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T22:28:53.861Z"
     },
     {
       "id": "9",
@@ -423,9 +424,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T22:24:31.046Z",
+    "lastModified": "2026-08-21T22:28:53.861Z",
     "taskCount": 32,
-    "completedCount": 5,
+    "completedCount": 6,
     "tags": [
       "master"
     ]
