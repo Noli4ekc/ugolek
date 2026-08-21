@@ -43,40 +43,43 @@
       "id": "4",
       "title": "CI: проверка компиляции + неподписанный IPA + симуляторный zip",
       "description": ".github/workflows/build.yml: debug-сборка (компиляция), unsigned IPA в artifacts, zip .app для Appetize.io.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "3"
       ],
       "priority": "high",
       "details": "Коммит: ci: build workflow - compile check + IPA + simulator zip",
       "testStrategy": "Все job зелёные, артефакты скачиваются",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T21:42:41.918Z"
     },
     {
       "id": "5",
       "title": "GitHub-репозиторий, зелёный CI, тег m0-foundation",
       "description": "Публичный репо через gh, пуш, зелёная сборка.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "4"
       ],
       "priority": "high",
       "details": "Тег: m0-foundation",
       "testStrategy": "Страница Actions зелёная, артефакты на месте",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T21:58:37.128Z"
     },
     {
       "id": "6",
       "title": "INSTALL.md + КОНТРОЛЬНАЯ ТОЧКА: приложение на iPhone и в браузере",
       "description": "Инструкция AltServer/AltStore и Appetize.io; пользователь подтверждает запуск на телефоне и в браузере.",
-      "status": "pending",
+      "status": "in-progress",
       "dependencies": [
         "5"
       ],
       "priority": "high",
       "details": "Коммит: docs: installation guide (AltStore + browser preview). Дальше не идём без подтверждения пользователя.",
       "testStrategy": "Приложение открылось на iPhone и в Appetize.io",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-21T21:58:37.157Z"
     },
     {
       "id": "7",
@@ -419,9 +422,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T21:40:30.125Z",
+    "lastModified": "2026-08-21T21:58:37.157Z",
     "taskCount": 32,
-    "completedCount": 2,
+    "completedCount": 4,
     "tags": [
       "master"
     ]
