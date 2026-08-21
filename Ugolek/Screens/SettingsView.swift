@@ -42,6 +42,20 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("1. Открой приложение «Команды» → Автоматизации → «+»")
+                        Text("2. Триггер: «Время суток» — выбери удобное время")
+                        Text("3. Действие: «Продлить огоньки» (приложение Уголёк)")
+                        Text("4. Отключи «Спрашивать до запуска» → «Готово»")
+                    }
+                    .font(.callout)
+                } header: {
+                    Text("Автоматизация без тапа")
+                } footer: {
+                    Text("В выбранное время iPhone сам откроет Уголёк и прогонит отправку — если телефон разблокирован. Напоминание-уведомление остаётся запасным вариантом.")
+                }
+
+                Section {
                     LabeledContent("Версия", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
                 }
             }
