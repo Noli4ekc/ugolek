@@ -109,6 +109,89 @@
     throw new Error('Пользователь не найден в списке чатов');
   }
 
+  function visibleEditor() {
+    const editors = Array.from(document.querySelectorAll(CFG.editorSelector));
+    return editors.find((el) => el.offsetParent !== null) || editors[0] || null;
+  }
+
+  function editorHasText(editor, text) {
+    return (editor.innerText || editor.textContent || '').includes(text);
+  }
+
+  function pasteViaReact(editor, text) {
+    for (const key of Object.keys(editor)) {
+      if (!key.startsWith('__reactFiber$') && !key.startsWith('__reactInternalInstance$')) continue;
+      let fiber = editor[key];
+      for (let depth = 0; fiber && depth < 30; depth++) {
+        const props = fiber.memoizedProps;
+        if (props && typeof props.onPaste === 'function') {
+          const fakeEvent = {
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            clipboardData: { getData: () => text },
+            target: editor,
+          };
+          try {
+            props.onPaste(fakeEvent);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+        fiber = fiber.return;
+      }
+    }
+    return false;
+  }
+
+  async function typeMessage(text) {
+    const editor = visibleEditor();
+    if (!editor) throw new Error('Не найдено поле ввода сообщения');
+
+    editor.focus();
+    await sleep(300);
+
+    if (!editorHasText(editor, text)) {
+      document.execCommand('insertText', false, text);
+      await sleep(500);
+    }
+
+    if (!editorHasText(editor, text)) {
+      pasteViaReact(editor, text);
+      await sleep(500);
+    }
+
+    if (!editorHasText(editor, text)) {
+      throw new Error('Текст не вставился в поле ввода');
+    }
+    log('Текст введён');
+  }
+
+  async function clickSend() {
+    for (const selector of CFG.sendSelectors) {
+      for (const button of document.querySelectorAll(selector)) {
+        if (button.offsetParent !== null) {
+          button.click();
+          return;
+        }
+      }
+    }
+
+    const editor = visibleEditor();
+    if (!editor) throw new Error('Не найдена кнопка отправки');
+    const keyOptions = {
+      key: 'Enter',
+      code: 'Enter',
+      keyCode: 13,
+      which: 13,
+      bubbles: true,
+      cancelable: true,
+    };
+    editor.dispatchEvent(new KeyboardEvent('keydown', keyOptions));
+    editor.dispatchEvent(new KeyboardEvent('keyup', keyOptions));
+    log('Отправка клавишей Enter');
+  }
+
   function discovery() {
     const list = chatList();
     return {
@@ -126,7 +209,7 @@
       type: 'result',
       username: payload.username,
       ok: false,
-      error: 'Ввод и отправка пока не реализованы',
+      error: 'Верификация пока не реализована',
     });
   }
 
