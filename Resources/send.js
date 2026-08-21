@@ -74,6 +74,15 @@
   }
 
   async function findAndOpenChat(username, isGroup) {
+    const initial = chatList();
+    if (initial) {
+      const top = scrollContainerOf(initial.items[0]);
+      if (top) {
+        top.scrollTop = 0;
+        await sleep(800);
+      }
+    }
+
     const wanted = String(username).toLowerCase();
     for (let step = 0; step <= CFG.scrollMaxSteps; step++) {
       const list = chatList();
