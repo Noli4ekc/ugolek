@@ -1,0 +1,10 @@
+# Нормализация переносов строк: код собирается на macOS CI, пишется на Windows
+* text=auto
+*.swift text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.md text eol=lf
+*.plist text eol=lf
+*.txt text eol=lf
