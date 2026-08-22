@@ -140,7 +140,7 @@ final class InboxRunner: NSObject {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         guard let scene = scenes.first else { throw InboxError.noWindowScene }
 
-        let size = CGSize(width: 1280, height: 800)
+        let size = CGSize(width: 1920, height: 1080)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: -size.width - 10, y: 0, width: size.width, height: size.height)
         window.alpha = 0.01

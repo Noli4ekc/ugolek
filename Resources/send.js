@@ -133,18 +133,13 @@
           matches = handle === wanted || nickname === wanted || title === wanted;
         }
         if (matches) {
-          humanClick(item);
-          var opened = await waitFor(() => visibleEditor() !== null, 8000);
+          const opened = await openChat(item);
           if (!opened) {
-            humanClick(item);
-            opened = await waitFor(() => visibleEditor() !== null, 5000);
-            if (!opened) {
-              const state = Object.keys(collectE2E())
-                .filter((key) => key.indexOf('dm-') === 0 || key.indexOf('chat') === 0 || key.indexOf('message') === 0)
-                .slice(0, 16)
-                .join(',');
-              throw new Error('Чат открылся, но поле ввода не появилось [' + state + ']');
-            }
+            const state = Object.keys(collectE2E())
+              .filter((key) => key.indexOf('dm-') === 0 || key.indexOf('chat') === 0 || key.indexOf('message') === 0)
+              .slice(0, 16)
+              .join(',');
+            throw new Error('Чат не открылся ни одним способом [' + state + ']');
           }
           return;
         }
@@ -168,6 +163,53 @@
       }
     }
     throw new Error('Пользователь не найден в списке чатов');
+  }
+
+  function clickViaReact(el) {
+    for (const key of Object.keys(el)) {
+      if (!key.startsWith('__reactFiber$') && !key.startsWith('__reactInternalInstance$')) continue;
+      let fiber = el[key];
+      for (let depth = 0; fiber && depth < 30; depth++) {
+        const props = fiber.memoizedProps;
+        if (props && typeof props.onClick === 'function') {
+          const fake = {
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            currentTarget: el,
+            target: el,
+            type: 'click',
+            clientX: 0,
+            clientY: 0,
+            button: 0,
+            nativeEvent: {}
+          };
+          try { props.onClick(fake); return true; } catch (e) { return false; }
+        }
+        fiber = fiber.return;
+      }
+    }
+    return false;
+  }
+
+  function keyboardClick(el) {
+    const options = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    el.dispatchEvent(new KeyboardEvent('keydown', options));
+    el.dispatchEvent(new KeyboardEvent('keyup', options));
+  }
+
+  async function openChat(item) {
+    const strategies = [
+      () => humanClick(item),
+      () => clickViaReact(item),
+      () => keyboardClick(item),
+      () => item.click()
+    ];
+    for (const strategy of strategies) {
+      strategy();
+      const opened = await waitFor(() => visibleEditor() !== null, 5000);
+      if (opened) return true;
+    }
+    return false;
   }
 
   function humanClick(el) {
