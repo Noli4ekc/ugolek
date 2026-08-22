@@ -93,7 +93,7 @@ final class SessionStore {
                 WKWebsiteDataType.localStorage,
                 WKWebsiteDataType.indexedDBDatabases,
                 WKWebsiteDataType.serviceWorkerRegistrations,
-                WKWebsiteDataType.webSQLDatabases,
+                WKWebsiteDataType.websqlDatabases,
             ]
         } else {
             types = WKWebsiteDataStore.allWebsiteDataTypes()
