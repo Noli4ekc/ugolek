@@ -79,3 +79,26 @@ jobs:
           name: Ugolek-unsigned-ipa
           path: Ugolek-unsigned.ipa
           retention-days: 30
+
+  rolling-release:
+    name: Attach IPA to rolling release
+    runs-on: ubuntu-latest
+    needs: ipa
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Download IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Ugolek-unsigned-ipa
+
+      - name: Publish to rolling release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view rolling --repo "$GITHUB_REPOSITORY" || \
+            gh release create rolling --repo "$GITHUB_REPOSITORY" \
+              --title "Свежая сборка (rolling)" \
+              --notes "Последняя сборка из ветки main. IPA — для установки через Sideloadly/AltStore."
+          gh release upload rolling Ugolek-unsigned.ipa --clobber --repo "$GITHUB_REPOSITORY"
