@@ -160,6 +160,8 @@
   }
 
   function visibleEditor() {
+    const primary = document.querySelector("[data-e2e='dm-new-input-editor'] [contenteditable='true']");
+    if (primary) return primary;
     const editors = Array.from(document.querySelectorAll(CFG.editorSelector));
     return editors.find((el) => el.offsetParent !== null) || editors[0] || null;
   }
@@ -218,17 +220,32 @@
   }
 
   async function clickSend() {
-    for (const selector of CFG.sendSelectors) {
+    await sleep(600);
+
+    for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
       for (const button of document.querySelectorAll(selector)) {
         if (button.offsetParent !== null) {
           button.click();
+          log('Отправка кнопкой: ' + selector);
+          return;
+        }
+      }
+    }
+
+    const chatbox = document.querySelector("[data-e2e='dm-new-chatbox']");
+    if (chatbox) {
+      for (const button of chatbox.querySelectorAll('button, [role="button"]')) {
+        const label = ((button.innerText || '') + ' ' + (button.getAttribute('aria-label') || '')).toLowerCase();
+        if (button.offsetParent !== null && /send|отправ/.test(label) && !/media|медиа|файл/.test(label)) {
+          button.click();
+          log('Отправка кнопкой в чатбоксе');
           return;
         }
       }
     }
 
     const editor = visibleEditor();
-    if (!editor) throw new Error('Не найдена кнопка отправки');
+    if (!editor) throw new Error('Поле ввода пропало перед отправкой');
     const keyOptions = {
       key: 'Enter',
       code: 'Enter',
@@ -315,22 +332,16 @@
   }
 
   function chatPane() {
-    return (
-      document.querySelector("[data-e2e='chat-message-list']") ||
-      document.querySelector("[data-e2e='chat-message']")?.closest('div[class]') ||
-      document.body
-    );
+    return document.querySelector("[data-e2e='dm-new-message-list']") || document.body;
   }
 
   async function verifySent(text) {
-    const pane = chatPane();
     for (let poll = 0; poll < CFG.verifyPolls; poll++) {
       await sleep(CFG.verifyPollMs);
-      const bubbles = pane.querySelectorAll("[data-e2e='chat-message'], [data-e2e*='message-item']");
+      const bubbles = document.querySelectorAll("[data-e2e='dm-new-message-text']");
       for (const bubble of bubbles) {
         if ((bubble.innerText || '').includes(text)) return true;
       }
-      if (bubbles.length === 0 && (pane.innerText || '').includes(text)) return true;
     }
     return false;
   }
