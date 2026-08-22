@@ -64,55 +64,94 @@
     return match ? match[1].toLowerCase() : null;
   }
 
-  function scrollContainerOf(item) {
-    let node = item;
-    while (node && node !== document.body) {
-      if (node.scrollHeight > node.clientHeight + 8) return node;
+  function waitFor(test, timeoutMs, pollMs = 400) {
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const timer = setInterval(() => {
+        let ok = false;
+        try { ok = !!test(); } catch (e) { ok = false; }
+        if (ok) { clearInterval(timer); resolve(true); }
+        else if (Date.now() - started > timeoutMs) { clearInterval(timer); resolve(false); }
+      }, pollMs);
+    });
+  }
+
+  async function waitForChatList() {
+    const appeared = await waitFor(
+      () => document.querySelectorAll("[data-e2e='dm-new-conversation-item']").length > 0,
+      15000
+    );
+    return appeared ? chatList() : null;
+  }
+
+  function scrollTargetFor() {
+    const direct = document.querySelector("[data-e2e='dm-new-conversation-list']");
+    let node = direct;
+    for (let i = 0; node && i < 12 && node !== document.body; i++) {
+      const style = getComputedStyle(node);
+      if (/(auto|scroll)/.test(style.overflowY)) return node;
       node = node.parentElement;
     }
-    return null;
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function nudgeScroll(target, delta) {
+    target.scrollTop += delta;
+    target.dispatchEvent(new WheelEvent('wheel', { deltaY: delta, bubbles: true, cancelable: true }));
+    target.dispatchEvent(new Event('scroll', { bubbles: true }));
+  }
+
+  function nicknameOfItem(item) {
+    const el = item.querySelector("[data-e2e='dm-new-conversation-nickname']");
+    return el ? (el.innerText || '').trim() : '';
   }
 
   async function findAndOpenChat(username, isGroup) {
-    const initial = chatList();
-    if (initial) {
-      const top = scrollContainerOf(initial.items[0]);
-      if (top) {
-        top.scrollTop = 0;
-        await sleep(800);
-      }
+    const wanted = String(username).toLowerCase();
+    let list = await waitForChatList();
+    if (!list) throw new Error('Список чатов не появился за 15 секунд');
+
+    const target = scrollTargetFor();
+    if (target.scrollTop > 0) {
+      nudgeScroll(target, -target.scrollTop);
+      await sleep(800);
     }
 
-    const wanted = String(username).toLowerCase();
     for (let step = 0; step <= CFG.scrollMaxSteps; step++) {
-      const list = chatList();
-      if (!list) throw new Error('Список чатов не найден на странице');
-
       for (const item of list.items) {
-        let matches = false;
+        const nickname = nicknameOfItem(item).toLowerCase();
+        let matches;
         if (isGroup) {
-          matches = itemTitle(item).toLowerCase() === wanted;
+          matches = itemTitle(item).toLowerCase() === wanted || nickname === wanted;
         } else {
-          const handle = handleFromItem(item);
-          if (handle) matches = handle === wanted;
+          matches = handleFromItem(item) === wanted || nickname === wanted;
         }
         if (matches) {
           item.click();
-          await sleep(CFG.clickWaitMs);
+          var opened = await waitFor(() => visibleEditor() !== null, 8000);
+          if (!opened) {
+            item.click();
+            opened = await waitFor(() => visibleEditor() !== null, 5000);
+            if (!opened) throw new Error('Чат открылся, но поле ввода не появилось');
+          }
           return;
         }
       }
 
-      const container = scrollContainerOf(list.items[0]);
-      if (!container) throw new Error('Не найден контейнер прокрутки списка чатов');
-
-      const before = container.scrollTop;
-      container.scrollTop = before + container.clientHeight * 2;
-      container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      const before = target.scrollTop;
+      nudgeScroll(target, target.clientHeight ? target.clientHeight * 2 : 600);
       await sleep(CFG.scrollStepMs);
 
-      if (container.scrollTop === before && step > 0) {
-        throw new Error('Пользователь не найден в списке чатов');
+      const refreshed = chatList();
+      if (refreshed) list = refreshed;
+
+      if (target.scrollTop === before) {
+        const winBefore = window.scrollY;
+        window.scrollBy(0, 800);
+        await sleep(600);
+        if (window.scrollY === winBefore && step > 1) {
+          throw new Error('Пользователь не найден в списке чатов');
+        }
       }
     }
     throw new Error('Пользователь не найден в списке чатов');
