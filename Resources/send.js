@@ -220,7 +220,7 @@
   }
 
   async function clickSend() {
-    await sleep(600);
+    await sleep(500);
 
     for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
       for (const button of document.querySelectorAll(selector)) {
@@ -244,8 +244,21 @@
       }
     }
 
-    const editor = visibleEditor();
-    if (!editor) throw new Error('Поле ввода пропало перед отправкой');
+    let editor = null;
+    for (let attempt = 0; attempt < 10 && !editor; attempt++) {
+      editor = visibleEditor();
+      if (!editor) await sleep(400);
+    }
+    if (!editor) {
+      const dmKeys = Object.keys(collectE2E())
+        .filter((key) => key.indexOf('dm-') === 0)
+        .slice(0, 14)
+        .join(',');
+      const state = 'editorContainer=' + (document.querySelector("[data-e2e='dm-new-input-editor']") ? 'есть' : 'нет')
+        + ' editables=' + document.querySelectorAll("[contenteditable='true']").length
+        + ' dm=[' + dmKeys + ']';
+      throw new Error('Поле ввода пропало перед отправкой (' + state + ')');
+    }
     const keyOptions = {
       key: 'Enter',
       code: 'Enter',
@@ -416,6 +429,13 @@
   }
 
   async function run(payload) {
+    if (payload.fast) {
+      CFG.settleMs = 1500;
+      CFG.scrollStepMs = 900;
+      CFG.sendConfirmMs = 600;
+      CFG.verifyPolls = 2;
+      CFG.verifyPollMs = 900;
+    }
     const username = payload.username || '';
     try {
       log('Ищу чат: ' + username);
