@@ -21,6 +21,8 @@ xcuserdata/
 # Секреты и локальные настройки
 *.env
 .env.*
+.zcode/
+.mcp/
 
 # Task Master — служебные внутренности (сам tasks.json коммитим)
 .taskmaster/cache/
