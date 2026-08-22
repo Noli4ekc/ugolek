@@ -76,6 +76,14 @@ struct RunDetailView: View {
                     .padding(.vertical, 2)
                 }
             }
+
+            if let log = run.log, !log.isEmpty {
+                Section("Лог") {
+                    Text(log)
+                        .font(.system(size: 12, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
         }
         .navigationTitle(Text(run.date, format: .dateTime.day().month().hour().minute()))
         .navigationBarTitleDisplayMode(.inline)

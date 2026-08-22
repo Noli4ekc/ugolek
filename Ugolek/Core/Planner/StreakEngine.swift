@@ -17,6 +17,10 @@ enum StreakEngine {
         let store = AppStore.shared
         let start = Date()
 
+        var logLines: [String] = []
+        InboxRunner.shared.onLog = { logLines.append($0) }
+        defer { InboxRunner.shared.onLog = nil }
+
         let targets = forceAll
             ? store.friends.filter(\.isEnabled)
             : store.friendsDueToday
@@ -70,7 +74,8 @@ enum StreakEngine {
         let record = RunRecord(
             date: start,
             durationSeconds: Date().timeIntervalSince(start),
-            results: results
+            results: results,
+            log: logLines.isEmpty ? nil : logLines.suffix(400).joined(separator: "\n")
         )
         if !dryRun { store.record(record) }
         return record

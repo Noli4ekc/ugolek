@@ -19,6 +19,7 @@ struct RunRecord: Codable, Identifiable, Equatable {
     var date: Date = .now
     var durationSeconds: Double = 0
     var results: [FriendResult] = []
+    var log: String? = nil
 
     var sentCount: Int { results.filter { $0.status == .sent }.count }
     var failedCount: Int { results.filter { $0.status == .failed }.count }
