@@ -335,13 +335,21 @@
     log('Текст введён');
   }
 
+  function safeClick(el) {
+    if (typeof el.click === 'function') {
+      el.click();
+      return;
+    }
+    humanClick(el);
+  }
+
   async function clickSend() {
     await sleep(CFG.sendScanMs);
 
     for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
       for (const button of document.querySelectorAll(selector)) {
         if (button.offsetParent !== null) {
-          button.click();
+          safeClick(button);
           log('Отправка кнопкой: ' + selector);
           return;
         }
@@ -353,7 +361,7 @@
       for (const button of chatbox.querySelectorAll('button, [role="button"]')) {
         const label = ((button.innerText || '') + ' ' + (button.getAttribute('aria-label') || '')).toLowerCase();
         if (button.offsetParent !== null && /send|отправ/.test(label) && !/media|медиа|файл/.test(label)) {
-          button.click();
+          safeClick(button);
           log('Отправка кнопкой в чатбоксе');
           return;
         }
