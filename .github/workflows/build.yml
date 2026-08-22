@@ -22,14 +22,21 @@ jobs:
         run: xcodegen generate
 
       - name: Build for iOS Simulator
-        run: >
-          xcodebuild -project Ugolek.xcodeproj
-          -scheme Ugolek
-          -destination 'generic/platform=iOS Simulator'
-          -configuration Debug
-          -derivedDataPath dd
-          CODE_SIGNING_ALLOWED=NO
-          build -quiet
+        id: build
+        run: |
+          set -o pipefail
+          xcodebuild -project Ugolek.xcodeproj \
+            -scheme Ugolek \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            -derivedDataPath dd \
+            CODE_SIGNING_ALLOWED=NO \
+            build -quiet 2>&1 | tee buildlog.txt
+
+      - name: Annotate compile errors
+        if: failure()
+        run: |
+          grep -E "error:" buildlog.txt | head -40 | sed 's/^/::error::/' || true
 
       - name: Zip simulator .app (for Appetize.io)
         run: |

@@ -87,17 +87,9 @@ final class SessionStore {
         let tiktokRecords = records.filter {
             $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
         }
-        let types: Set<String>
-        if keepingCookies {
-            types = [
-                WKWebsiteDataType.localStorage,
-                WKWebsiteDataType.indexedDBDatabases,
-                WKWebsiteDataType.serviceWorkerRegistrations,
-                WKWebsiteDataType.websqlDatabases,
-            ]
-        } else {
-            types = WKWebsiteDataStore.allWebsiteDataTypes()
-        }
+        let types: Set<String> = keepingCookies
+            ? WKWebsiteDataStore.allWebsiteDataTypes().subtracting([WKWebsiteDataType.cookies])
+            : WKWebsiteDataStore.allWebsiteDataTypes()
         await dataStore.removeData(ofTypes: types, for: tiktokRecords)
     }
 
