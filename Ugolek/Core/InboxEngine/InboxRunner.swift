@@ -35,6 +35,7 @@ final class InboxRunner: NSObject {
     private var loadedURL: URL?
     private var loadContinuation: CheckedContinuation<URL, Error>?
     private var resultContinuation: CheckedContinuation<BridgeMessage, Never>?
+    private var runToken = 0
     private var script = ""
 
     var onLog: ((String) -> Void)?
@@ -78,7 +79,7 @@ final class InboxRunner: NSObject {
         dryRun: Bool,
         fast: Bool = false
     ) async -> BridgeMessage {
-        guard let webView else {
+        guard webView != nil else {
             return BridgeMessage(type: "result", username: handle, ok: false, error: "Движок не загружен")
         }
 
@@ -95,12 +96,24 @@ final class InboxRunner: NSObject {
             return BridgeMessage(type: "result", username: handle, ok: false, error: "Не удалось собрать команду")
         }
 
+        let first = await runJS(json, handle: handle)
+        if first.ok == false, let error = first.error, error.contains("Чат не открылся") {
+            // правая панель не переключилась — пробуем после полной перезагрузки страницы
+            await reloadPage()
+            return await runJS(json, handle: handle)
+        }
+        return first
+    }
+
+    private func runJS(_ json: String, handle: String) async -> BridgeMessage {
+        runToken += 1
+        let token = runToken
         return await withCheckedContinuation { cont in
             resultContinuation = cont
-            webView.evaluateJavaScript("Ugolek.run(\(json))", completionHandler: nil)
+            webView?.evaluateJavaScript("Ugolek.run(\(json))", completionHandler: nil)
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(95))
-                guard let self, let pending = self.resultContinuation else { return }
+                guard let self, self.runToken == token, let pending = self.resultContinuation else { return }
                 self.resultContinuation = nil
                 pending.resume(returning: BridgeMessage(
                     type: "result",
@@ -110,6 +123,14 @@ final class InboxRunner: NSObject {
                 ))
             }
         }
+    }
+
+    private func reloadPage() async {
+        guard let webView else { return }
+        webView.load(URLRequest(url: URL(string: "https://www.tiktok.com/messages?lang=en")!))
+        try? await Task.sleep(for: .seconds(8))
+        try? injectScript()
+        try? await Task.sleep(for: .seconds(3))
     }
 
     func discovery() async -> String {
@@ -125,7 +146,7 @@ final class InboxRunner: NSObject {
     func chatProbe() async -> String {
         guard let webView else { return "Движок ещё не загружался" }
         _ = try? await webView.evaluateJavaScript("Ugolek.openFirstChat()")
-        try? await Task.sleep(for: .seconds(16))
+        try? await Task.sleep(for: .seconds(30))
         if let result = try? await webView.evaluateJavaScript("JSON.stringify(Ugolek.chatSnapshot())"),
            let text = result as? String {
             return text

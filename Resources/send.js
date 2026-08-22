@@ -137,6 +137,7 @@
             item.scrollIntoView({ block: 'center' });
           } catch (e) {}
           await sleep(500);
+          log('До клика — ' + paneState());
           const opened = await openChat(item);
           if (!opened) {
             throw new Error('Чат не открылся [' + chatOpenDiagnostics(item) + ']');
@@ -211,7 +212,8 @@
       view: window,
       clientX: clampX(rect.left + rect.width * 0.35),
       clientY: clampY(rect.top + rect.height / 2),
-      button: 0
+      button: 0,
+      detail: 1
     };
     el.dispatchEvent(new MouseEvent('mousedown', options));
     setTimeout(() => {
@@ -232,36 +234,104 @@
 
   const editorReady = () => visibleEditor() !== null;
 
+  async function settleRect(item, maxMs) {
+    const started = Date.now();
+    let last = null;
+    while (Date.now() - started < maxMs) {
+      const rect = item.getBoundingClientRect();
+      const key = [rect.left, rect.top, rect.width, rect.height].join(',');
+      if (last !== null && key === last) return;
+      last = key;
+      await sleep(250);
+    }
+  }
+
+  function resolveFresh(item) {
+    const convId = item.getAttribute('data-conv-id');
+    if (convId) {
+      const nodes = document.querySelectorAll("[data-e2e='dm-new-conversation-item'][data-conv-id=\"" + convId + "\"]");
+      for (const node of nodes) {
+        if (node.isConnected) return node;
+      }
+    }
+    const nickname = nicknameOfItem(item);
+    if (nickname) {
+      const all = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
+      for (const node of all) {
+        if (nicknameOfItem(node) === nickname) return node;
+      }
+    }
+    return item.isConnected ? item : null;
+  }
+
+  function paneState() {
+    const visible = (selector) => {
+      const el = document.querySelector(selector);
+      return !!el && el.offsetParent !== null;
+    };
+    const parts = [];
+    if (visible("[data-e2e='dm-new-input-editor']")) parts.push('editor');
+    if (visible("[data-e2e='dm-new-chatbox']")) parts.push('chatbox');
+    if (visible("[data-e2e='dm-new-message-list']")) parts.push('msglist');
+    if (visible("[data-e2e='inbox-bar']")) parts.push('inboxBar');
+    if (visible("[data-e2e='inbox-content']")) parts.push('inboxContent');
+    const errEl = document.querySelector("[data-e2e='dm-render-error']");
+    const err = errEl
+      ? (errEl.offsetParent !== null ? 'видим' : 'скрыт') + ':' + (errEl.innerText || '').replace(/\s+/g, ' ').slice(0, 40)
+      : 'нет';
+    return 'панель=[' + (parts.join(',') || 'ничего') + '] renderErr=' + err;
+  }
+
   async function openChat(item) {
     try { item.scrollIntoView({ block: 'center' }); } catch (e) {}
-    await sleep(400);
+    await settleRect(item, 2000);
 
-    const nickname = item.querySelector("[data-e2e='dm-new-conversation-nickname']");
-    const targets = [item];
-    if (nickname) targets.push(nickname);
-    if (item.firstElementChild && item.firstElementChild !== nickname) targets.push(item.firstElementChild);
-
-    for (const target of targets) {
+    const clickRound = async () => {
+      const node = resolveFresh(item);
+      if (!node) return false;
+      try { node.scrollIntoView({ block: 'center' }); } catch (e) {}
       hoverPane();
-      humanClick(target);
-      if (await waitFor(editorReady, 4000)) return true;
+      humanClick(node);
+      return true;
+    };
 
-      hoverPane();
-      pressAndHold(target);
-      if (await waitFor(editorReady, 3000)) return true;
+    // список чатов перерисовывается (виртуализация, новые сообщения) — каждый раз бьём по свежей ноде
+    if (await clickRound() && await waitFor(editorReady, 5000)) return chatOpened();
+    if (await clickRound() && await waitFor(editorReady, 2500)) return chatOpened();
+    if (await clickRound() && await waitFor(editorReady, 2500)) return chatOpened();
 
-      clickViaReact(target);
-      if (await waitFor(editorReady, 3000)) return true;
+    const focusNode = resolveFresh(item);
+    if (focusNode) {
+      try { focusNode.focus(); } catch (e) {}
+      keyboardClick(focusNode);
+      if (await waitFor(editorReady, 2500)) return chatOpened();
     }
 
-    try { item.focus(); } catch (e) {}
-    keyboardClick(item);
-    if (await waitFor(editorReady, 3000)) return true;
+    const reactNode = resolveFresh(item);
+    if (reactNode) {
+      clickViaReact(reactNode);
+      if (await waitFor(editorReady, 3000)) return chatOpened();
+    }
 
-    item.click();
-    if (await waitFor(editorReady, 3000)) return true;
+    const holdNode = resolveFresh(item);
+    if (holdNode) {
+      const nickname = holdNode.querySelector("[data-e2e='dm-new-conversation-nickname']");
+      pressAndHold(nickname || holdNode);
+      if (await waitFor(editorReady, 3000)) return chatOpened();
+    }
+
+    const last = resolveFresh(item);
+    if (last) {
+      try { last.click(); } catch (e) {}
+      if (await waitFor(editorReady, 2500)) return chatOpened();
+    }
 
     return false;
+  }
+
+  function chatOpened() {
+    log('Чат открыт — ' + paneState());
+    return true;
   }
 
   function chatOpenDiagnostics(item) {
@@ -270,11 +340,17 @@
     const overlay = at
       ? at.tagName + '.' + String(at.className).slice(0, 40) + ' e2e=' + at.getAttribute('data-e2e')
       : 'null';
-    const container = document.querySelector("[data-e2e='dm-new-input-editor']") ? 'контейнерЕсть' : 'контейнераНет';
-    const pane = document.querySelector("[data-e2e='dm-new-chatbox'], [data-e2e='message-input-area'], [data-e2e='inbox-bar']");
-    const paneInfo = pane ? pane.getAttribute('data-e2e') : 'панелиНет';
+    const convId = item.getAttribute('data-conv-id');
+    let freshSel = 'нетConvId';
+    if (convId) {
+      const nodes = document.querySelectorAll("[data-e2e='dm-new-conversation-item'][data-conv-id=\"" + convId + "\"]");
+      freshSel = nodes.length
+        ? Array.from(nodes).map((n) => n.getAttribute('aria-selected')).join(',')
+        : 'нетНоды';
+    }
     const html = item.outerHTML ? item.outerHTML.replace(/\s+/g, ' ').slice(0, 250) : '';
-    return 'центр=' + overlay + ' ' + container + ' панель=' + paneInfo + ' item=' + html;
+    return 'центр=' + overlay + ' connected=' + item.isConnected + ' freshSel=' + freshSel
+      + ' ' + paneState() + ' item=' + html;
   }
 
   function humanClick(el) {
@@ -285,11 +361,13 @@
       view: window,
       clientX: Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2)),
       clientY: Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2)),
-      button: 0
+      button: 0,
+      detail: 1
     };
-    try { el.dispatchEvent(new PointerEvent('pointerdown', options)); } catch (e) {}
+    const pointerOptions = Object.assign({}, options, { pointerId: 1, pointerType: 'mouse', isPrimary: true });
+    try { el.dispatchEvent(new PointerEvent('pointerdown', pointerOptions)); } catch (e) {}
     el.dispatchEvent(new MouseEvent('mousedown', options));
-    try { el.dispatchEvent(new PointerEvent('pointerup', options)); } catch (e) {}
+    try { el.dispatchEvent(new PointerEvent('pointerup', pointerOptions)); } catch (e) {}
     el.dispatchEvent(new MouseEvent('mouseup', options));
     el.dispatchEvent(new MouseEvent('click', options));
   }
@@ -652,5 +730,5 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд');
+  log('Скрипт загружен и ждёт команд (m4.15)');
 })();
