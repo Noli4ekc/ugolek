@@ -4,12 +4,16 @@
 
   const CFG = {
     settleMs: 3000,
+    focusMs: 300,
+    insertMs: 500,
+    sendScanMs: 500,
     clickWaitMs: 1500,
     scrollStepMs: 2000,
     scrollMaxSteps: 40,
     sendConfirmMs: 1000,
     verifyPolls: 3,
     verifyPollMs: 1200,
+    pollMs: 400,
     itemSelectors: [
       "[data-e2e*='dm-new-conversation-item']",
       "[data-e2e*='chat-list-item']",
@@ -64,7 +68,8 @@
     return match ? match[1].toLowerCase() : null;
   }
 
-  function waitFor(test, timeoutMs, pollMs = 400) {
+  function waitFor(test, timeoutMs, pollMs) {
+    const interval = pollMs || CFG.pollMs || 400;
     return new Promise((resolve) => {
       const started = Date.now();
       const timer = setInterval(() => {
@@ -72,7 +77,7 @@
         try { ok = !!test(); } catch (e) { ok = false; }
         if (ok) { clearInterval(timer); resolve(true); }
         else if (Date.now() - started > timeoutMs) { clearInterval(timer); resolve(false); }
-      }, pollMs);
+      }, interval);
     });
   }
 
@@ -232,7 +237,7 @@
     if (!editor) throw new Error('Не найдено поле ввода сообщения');
 
     editor.focus();
-    await sleep(300);
+    await sleep(CFG.focusMs);
 
     if (editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT') {
       const setter = Object.getOwnPropertyDescriptor(
@@ -241,17 +246,17 @@
       ).set;
       setter.call(editor, text);
       editor.dispatchEvent(new Event('input', { bubbles: true }));
-      await sleep(500);
+      await sleep(CFG.insertMs);
     }
 
     if (!editorHasText(editor, text)) {
       document.execCommand('insertText', false, text);
-      await sleep(500);
+      await sleep(CFG.insertMs);
     }
 
     if (!editorHasText(editor, text)) {
       pasteViaReact(editor, text);
-      await sleep(500);
+      await sleep(CFG.insertMs);
     }
 
     if (!editorHasText(editor, text)) {
@@ -261,7 +266,7 @@
   }
 
   async function clickSend() {
-    await sleep(500);
+    await sleep(CFG.sendScanMs);
 
     for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
       for (const button of document.querySelectorAll(selector)) {
@@ -288,7 +293,7 @@
     let editor = null;
     for (let attempt = 0; attempt < 10 && !editor; attempt++) {
       editor = visibleEditor();
-      if (!editor) await sleep(400);
+      if (!editor) await sleep(CFG.pollMs || 400);
     }
     if (!editor) {
       const dmKeys = Object.keys(collectE2E())
@@ -472,10 +477,15 @@
   async function run(payload) {
     if (payload.fast) {
       CFG.settleMs = 1500;
+      CFG.focusMs = 150;
+      CFG.insertMs = 250;
+      CFG.sendScanMs = 250;
+      CFG.clickWaitMs = 800;
       CFG.scrollStepMs = 900;
-      CFG.sendConfirmMs = 600;
+      CFG.sendConfirmMs = 400;
       CFG.verifyPolls = 2;
-      CFG.verifyPollMs = 900;
+      CFG.verifyPollMs = 700;
+      CFG.pollMs = 200;
     }
     const username = payload.username || '';
     try {
