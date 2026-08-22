@@ -294,7 +294,8 @@
         chats.push({
           handle: handleFromItem(item),
           nickname: nicknameOfItem(item),
-          title: itemTitle(item)
+          title: itemTitle(item),
+          text: (item.innerText || '').replace(/\s+/g, ' ').slice(0, 90)
         });
       });
 
@@ -303,6 +304,7 @@
       ready: document.readyState,
       e2e: e2eSorted,
       chats,
+      flame: flameScan(),
       profileLinks: document.querySelectorAll("a[href*='/@']").length,
       editables: document.querySelectorAll("[contenteditable='true']").length,
       iframes: document.querySelectorAll('iframe').length,
@@ -331,6 +333,29 @@
       if (bubbles.length === 0 && (pane.innerText || '').includes(text)) return true;
     }
     return false;
+  }
+
+  function flameScan() {
+    const found = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode()) && found.length < 8) {
+      const text = node.textContent || '';
+      if (/🔥/.test(text) || /\bflame\b/i.test(text)) {
+        found.push({ kind: 'text', sample: text.trim().slice(0, 40) });
+      }
+    }
+    document
+      .querySelectorAll('[class*="streak" i], [class*="flame" i], [data-e2e*="streak" i], [data-e2e*="flame" i]')
+      .forEach((el) => {
+        if (found.length < 12) {
+          found.push({
+            kind: 'attr',
+            sample: (el.getAttribute('data-e2e') || classOf(el) || '').toString().slice(0, 40)
+          });
+        }
+      });
+    return found;
   }
 
   function openFirstChat() {
@@ -374,7 +399,8 @@
       e2e: collectE2E(),
       buttons: buttons.slice(0, 20),
       editables,
-      chatboxButtons
+      chatboxButtons,
+      flame: flameScan()
     };
   }
 
