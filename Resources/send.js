@@ -200,44 +200,81 @@
     el.dispatchEvent(new KeyboardEvent('keyup', options));
   }
 
+  function clampX(value) { return Math.max(1, Math.min(window.innerWidth - 1, value)); }
+  function clampY(value) { return Math.max(1, Math.min(window.innerHeight - 1, value)); }
+
+  function pressAndHold(el) {
+    const rect = el.getBoundingClientRect();
+    const options = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: clampX(rect.left + rect.width * 0.35),
+      clientY: clampY(rect.top + rect.height / 2),
+      button: 0
+    };
+    el.dispatchEvent(new MouseEvent('mousedown', options));
+    setTimeout(() => {
+      el.dispatchEvent(new MouseEvent('mouseup', options));
+      el.dispatchEvent(new MouseEvent('click', options));
+    }, 120);
+  }
+
+  function hoverPane() {
+    const x = clampX(window.innerWidth * 0.6);
+    const y = clampY(window.innerHeight * 0.5);
+    const el = document.elementFromPoint(x, y);
+    if (!el) return;
+    el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: y }));
+    el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, clientX: x, clientY: y }));
+    el.dispatchEvent(new MouseEvent('mouseenter', { clientX: x, clientY: y }));
+  }
+
+  const editorReady = () => visibleEditor() !== null;
+
   async function openChat(item) {
-    const targets = [item];
+    try { item.scrollIntoView({ block: 'center' }); } catch (e) {}
+    await sleep(400);
+
     const nickname = item.querySelector("[data-e2e='dm-new-conversation-nickname']");
+    const targets = [item];
     if (nickname) targets.push(nickname);
-    if (item.firstElementChild && item.firstElementChild !== nickname) {
-      targets.push(item.firstElementChild);
-    }
+    if (item.firstElementChild && item.firstElementChild !== nickname) targets.push(item.firstElementChild);
 
     for (const target of targets) {
+      hoverPane();
       humanClick(target);
-      if (await waitFor(() => visibleEditor() !== null, 4000)) return true;
+      if (await waitFor(editorReady, 4000)) return true;
+
+      hoverPane();
+      pressAndHold(target);
+      if (await waitFor(editorReady, 3000)) return true;
+
       clickViaReact(target);
-      if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+      if (await waitFor(editorReady, 3000)) return true;
     }
 
-    humanClick(item);
-    humanClick(item);
-    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
-
+    try { item.focus(); } catch (e) {}
     keyboardClick(item);
-    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+    if (await waitFor(editorReady, 3000)) return true;
 
     item.click();
-    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+    if (await waitFor(editorReady, 3000)) return true;
 
     return false;
   }
 
   function chatOpenDiagnostics(item) {
     const rect = item.getBoundingClientRect();
-    const cx = Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
-    const cy = Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
-    const at = document.elementFromPoint(cx, cy);
+    const at = document.elementFromPoint(clampX(rect.left + rect.width / 2), clampY(rect.top + rect.height / 2));
     const overlay = at
-      ? at.tagName + '.' + String(at.className).slice(0, 50) + ' e2e=' + at.getAttribute('data-e2e')
+      ? at.tagName + '.' + String(at.className).slice(0, 40) + ' e2e=' + at.getAttribute('data-e2e')
       : 'null';
-    const html = item.outerHTML ? item.outerHTML.replace(/\s+/g, ' ').slice(0, 400) : '';
-    return 'центр=' + overlay + ' item=' + html;
+    const container = document.querySelector("[data-e2e='dm-new-input-editor']") ? 'контейнерЕсть' : 'контейнераНет';
+    const pane = document.querySelector("[data-e2e='dm-new-chatbox'], [data-e2e='message-input-area'], [data-e2e='inbox-bar']");
+    const paneInfo = pane ? pane.getAttribute('data-e2e') : 'панелиНет';
+    const html = item.outerHTML ? item.outerHTML.replace(/\s+/g, ' ').slice(0, 250) : '';
+    return 'центр=' + overlay + ' ' + container + ' панель=' + paneInfo + ' item=' + html;
   }
 
   function humanClick(el) {
