@@ -81,16 +81,26 @@ final class SessionStore {
 
     func clearSiteData(keepingCookies: Bool) async {
         let dataStore = WKWebsiteDataStore.default()
+        // куки переживают очистку: снимаем их, чистим все данные, сажаем обратно
+        var savedCookies: [HTTPCookie] = []
+        if keepingCookies {
+            savedCookies = await withCheckedContinuation { cont in
+                dataStore.httpCookieStore.getAllCookies { cont.resume(returning: $0) }
+            }
+        }
         let records = await dataStore.dataRecords(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()
         )
         let tiktokRecords = records.filter {
             $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
         }
-        let types: Set<String> = keepingCookies
-            ? WKWebsiteDataStore.allWebsiteDataTypes().subtracting([WKWebsiteDataType.cookies])
-            : WKWebsiteDataStore.allWebsiteDataTypes()
-        await dataStore.removeData(ofTypes: types, for: tiktokRecords)
+        await dataStore.removeData(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
+            for: tiktokRecords
+        )
+        for cookie in savedCookies {
+            await dataStore.httpCookieStore.setCookie(cookie)
+        }
     }
 
     func logout() {
