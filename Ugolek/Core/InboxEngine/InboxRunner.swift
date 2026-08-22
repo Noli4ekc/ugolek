@@ -67,7 +67,8 @@ final class InboxRunner: NSObject {
         to handle: String,
         message: String,
         isGroup: Bool,
-        dryRun: Bool
+        dryRun: Bool,
+        fast: Bool = false
     ) async -> BridgeMessage {
         guard let webView else {
             return BridgeMessage(type: "result", username: handle, ok: false, error: "Движок не загружен")
@@ -78,6 +79,7 @@ final class InboxRunner: NSObject {
             "message": message,
             "isGroup": isGroup,
             "dryRun": dryRun,
+            "fast": fast,
         ]
         guard JSONSerialization.isValidJSONObject(payload),
               let data = try? JSONSerialization.data(withJSONObject: payload),

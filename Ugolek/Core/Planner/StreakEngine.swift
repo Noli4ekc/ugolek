@@ -49,7 +49,8 @@ enum StreakEngine {
                 to: friend.handle,
                 message: store.settings.messageText,
                 isGroup: friend.isGroup,
-                dryRun: dryRun
+                dryRun: dryRun,
+                fast: store.settings.fastMode
             )
             let ok = reply.ok ?? false
             results.append(FriendResult(
@@ -61,7 +62,8 @@ enum StreakEngine {
 
             if !ok && !store.settings.skipUnreachable { break }
             if index < targets.count - 1 {
-                try? await Task.sleep(for: .seconds(Double.random(in: 2...6)))
+                let pauseRange: ClosedRange<Double> = store.settings.fastMode ? 0.8...1.6 : 2...6
+                try? await Task.sleep(for: .seconds(Double.random(in: pauseRange)))
             }
         }
 

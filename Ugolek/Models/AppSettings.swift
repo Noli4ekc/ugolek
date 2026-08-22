@@ -7,11 +7,12 @@ struct AppSettings: Codable, Equatable {
     var useRandomMessages: Bool = false
     var skipUnreachable: Bool = true
     var messageOnlyWithFlame: Bool = true
+    var fastMode: Bool = false
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case messageText, dailyHour, dailyMinute, useRandomMessages, skipUnreachable, messageOnlyWithFlame
+        case messageText, dailyHour, dailyMinute, useRandomMessages, skipUnreachable, messageOnlyWithFlame, fastMode
     }
 
     init(from decoder: Decoder) throws {
@@ -23,5 +24,6 @@ struct AppSettings: Codable, Equatable {
         useRandomMessages = try c.decodeIfPresent(Bool.self, forKey: .useRandomMessages) ?? false
         skipUnreachable = try c.decodeIfPresent(Bool.self, forKey: .skipUnreachable) ?? true
         messageOnlyWithFlame = try c.decodeIfPresent(Bool.self, forKey: .messageOnlyWithFlame) ?? true
+        fastMode = try c.decodeIfPresent(Bool.self, forKey: .fastMode) ?? false
     }
 }
