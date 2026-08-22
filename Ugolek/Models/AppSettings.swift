@@ -6,4 +6,22 @@ struct AppSettings: Codable, Equatable {
     var dailyMinute: Int = 0
     var useRandomMessages: Bool = false
     var skipUnreachable: Bool = true
+    var messageOnlyWithFlame: Bool = true
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case messageText, dailyHour, dailyMinute, useRandomMessages, skipUnreachable, messageOnlyWithFlame
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        messageText = try c.decodeIfPresent(String.self, forKey: .messageText)
+            ?? "Привет! Не дадим нашему огоньку погаснуть! 🔥"
+        dailyHour = try c.decodeIfPresent(Int.self, forKey: .dailyHour) ?? 10
+        dailyMinute = try c.decodeIfPresent(Int.self, forKey: .dailyMinute) ?? 0
+        useRandomMessages = try c.decodeIfPresent(Bool.self, forKey: .useRandomMessages) ?? false
+        skipUnreachable = try c.decodeIfPresent(Bool.self, forKey: .skipUnreachable) ?? true
+        messageOnlyWithFlame = try c.decodeIfPresent(Bool.self, forKey: .messageOnlyWithFlame) ?? true
+    }
 }

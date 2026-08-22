@@ -98,6 +98,7 @@ struct FriendEditor: View {
     @State private var handle = ""
     @State private var label = ""
     @State private var isGroup = false
+    @State private var hasFlame = true
 
     private var canSave: Bool {
         handle.trimmingCharacters(in: .whitespaces).count >= 2
@@ -119,8 +120,9 @@ struct FriendEditor: View {
                 }
                 Section {
                     Toggle("Это групповой чат", isOn: $isGroup)
+                    Toggle("Есть огонёк 🔥", isOn: $hasFlame)
                 } footer: {
-                    Text("Для друга укажи username из TikTok. Для группового чата — точное название, под которым он отображается в сообщениях TikTok.")
+                    Text("Для друга укажи username из TikTok. Для группового чата — точное название, под которым он отображается в сообщениях TikTok. Флажок «огонёк» включает друга в ежедневную рассылку (в веб-версии TikTok огонёк не виден, поэтому отмечаем вручную; погасший огонёк восстановим — просто оставь флажок включённым).")
                 }
                 if let friend {
                     Section {
@@ -149,6 +151,7 @@ struct FriendEditor: View {
                     handle = f.handle
                     label = f.label
                     isGroup = f.isGroup
+                    hasFlame = f.hasFlame
                 }
             }
         }
@@ -162,6 +165,7 @@ struct FriendEditor: View {
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
         f.label = label.trimmingCharacters(in: .whitespaces)
         f.isGroup = isGroup
+        f.hasFlame = hasFlame
         guard !f.handle.isEmpty else { return }
         if friend == nil {
             AppStore.shared.add(f)

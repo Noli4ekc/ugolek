@@ -31,7 +31,11 @@ final class AppStore {
 
     var friendsDueToday: [Friend] {
         let today = Day.today()
-        return friends.filter { $0.isEnabled && $0.lastSentDay != today }
+        return friends.filter { friend in
+            guard friend.isEnabled, friend.lastSentDay != today else { return false }
+            if settings.messageOnlyWithFlame && !friend.hasFlame { return false }
+            return true
+        }
     }
 
     var sentTodayCount: Int {
