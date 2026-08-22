@@ -135,11 +135,7 @@
         if (matches) {
           const opened = await openChat(item);
           if (!opened) {
-            const state = Object.keys(collectE2E())
-              .filter((key) => key.indexOf('dm-') === 0 || key.indexOf('chat') === 0 || key.indexOf('message') === 0)
-              .slice(0, 16)
-              .join(',');
-            throw new Error('Чат не открылся ни одним способом [' + state + ']');
+            throw new Error('Чат не открылся [' + chatOpenDiagnostics(item) + ']');
           }
           return;
         }
@@ -198,18 +194,43 @@
   }
 
   async function openChat(item) {
-    const strategies = [
-      () => humanClick(item),
-      () => clickViaReact(item),
-      () => keyboardClick(item),
-      () => item.click()
-    ];
-    for (const strategy of strategies) {
-      strategy();
-      const opened = await waitFor(() => visibleEditor() !== null, 5000);
-      if (opened) return true;
+    const targets = [item];
+    const nickname = item.querySelector("[data-e2e='dm-new-conversation-nickname']");
+    if (nickname) targets.push(nickname);
+    if (item.firstElementChild && item.firstElementChild !== nickname) {
+      targets.push(item.firstElementChild);
     }
+
+    for (const target of targets) {
+      humanClick(target);
+      if (await waitFor(() => visibleEditor() !== null, 4000)) return true;
+      clickViaReact(target);
+      if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+    }
+
+    humanClick(item);
+    humanClick(item);
+    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+
+    keyboardClick(item);
+    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+
+    item.click();
+    if (await waitFor(() => visibleEditor() !== null, 3000)) return true;
+
     return false;
+  }
+
+  function chatOpenDiagnostics(item) {
+    const rect = item.getBoundingClientRect();
+    const cx = Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
+    const cy = Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
+    const at = document.elementFromPoint(cx, cy);
+    const overlay = at
+      ? at.tagName + '.' + String(at.className).slice(0, 50) + ' e2e=' + at.getAttribute('data-e2e')
+      : 'null';
+    const html = item.outerHTML ? item.outerHTML.replace(/\s+/g, ' ').slice(0, 400) : '';
+    return 'центр=' + overlay + ' item=' + html;
   }
 
   function humanClick(el) {
@@ -472,7 +493,9 @@
 
   function openFirstChat() {
     const items = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
-    if (items[0]) items[0].click();
+    if (items[0]) {
+      openChat(items[0]).then(() => {});
+    }
     return items.length;
   }
 
