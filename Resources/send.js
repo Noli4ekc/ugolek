@@ -133,6 +133,10 @@
           matches = handle === wanted || nickname === wanted || title === wanted;
         }
         if (matches) {
+          try {
+            item.scrollIntoView({ block: 'center' });
+          } catch (e) {}
+          await sleep(500);
           const opened = await openChat(item);
           if (!opened) {
             throw new Error('Чат не открылся [' + chatOpenDiagnostics(item) + ']');
@@ -162,6 +166,9 @@
   }
 
   function clickViaReact(el) {
+    const rect = el.getBoundingClientRect();
+    const cx = Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
+    const cy = Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
     for (const key of Object.keys(el)) {
       if (!key.startsWith('__reactFiber$') && !key.startsWith('__reactInternalInstance$')) continue;
       let fiber = el[key];
@@ -174,8 +181,8 @@
             currentTarget: el,
             target: el,
             type: 'click',
-            clientX: 0,
-            clientY: 0,
+            clientX: cx,
+            clientY: cy,
             button: 0,
             nativeEvent: {}
           };
@@ -239,8 +246,8 @@
       bubbles: true,
       cancelable: true,
       view: window,
-      clientX: rect.left + rect.width / 2,
-      clientY: rect.top + rect.height / 2,
+      clientX: Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2)),
+      clientY: Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2)),
       button: 0
     };
     try { el.dispatchEvent(new PointerEvent('pointerdown', options)); } catch (e) {}
