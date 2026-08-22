@@ -140,7 +140,11 @@
           const preState = paneState();
           log('До клика — ' + preState);
           if (renderErrVisible() && !(await recoverRenderError())) {
-            throw new Error('Чат не открылся [DM сломана до клика: ' + preState + ']');
+            log('Оверлей ошибки без кнопки повтора — пробую другой чат для перемонтирования панели');
+            if (!(await distractClick(item))) {
+              throw new Error('Чат не открылся [DM сломана до клика: ' + preState + ']');
+            }
+            log('Панель восстановлена кликом по другому чату');
           }
           const opened = await openChat(item);
           if (!opened) {
@@ -209,6 +213,27 @@
 
   const editorReady = () => visibleEditor() !== null;
 
+  // чат открыт ТОЛЬКО если поле ввода есть и выбрана именно целевая строка
+  // (иначе после «отвлекающего» клика можно написать не в тот чат)
+  function chatOpenReady(item) {
+    if (!editorReady()) return false;
+    const node = resolveFresh(item);
+    return !!node && node.getAttribute('aria-selected') === 'true';
+  }
+
+  async function distractClick(item) {
+    const targetConv = item.getAttribute('data-conv-id');
+    const items = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
+    for (const other of items) {
+      if (targetConv && other.getAttribute('data-conv-id') === targetConv) continue;
+      if (other.offsetParent === null) continue;
+      try { other.scrollIntoView({ block: 'center' }); } catch (e) {}
+      humanClick(other);
+      if (await waitFor(editorReady, 6000)) return true;
+    }
+    return false;
+  }
+
   async function settleRect(item, maxMs) {
     const started = Date.now();
     let last = null;
@@ -251,9 +276,15 @@
     if (visible("[data-e2e='inbox-bar']")) parts.push('inboxBar');
     if (visible("[data-e2e='inbox-content']")) parts.push('inboxContent');
     const errEl = document.querySelector("[data-e2e='dm-render-error']");
-    const err = errEl
-      ? (errEl.offsetParent !== null ? 'видим' : 'скрыт') + ':' + (errEl.innerText || '').replace(/\s+/g, ' ').slice(0, 40)
-      : 'нет';
+    let err = 'нет';
+    if (errEl) {
+      const buttons = Array.from(errEl.querySelectorAll('button, [role="button"]'))
+        .map((b) => ((b.innerText || '') + (b.getAttribute('aria-label') || '')).trim().slice(0, 24))
+        .filter(Boolean).slice(0, 4).join('|');
+      err = (errEl.offsetParent !== null ? 'видим' : 'скрыт')
+        + ':' + (errEl.innerText || '').replace(/\s+/g, ' ').slice(0, 40)
+        + (buttons ? ' кнопки=[' + buttons + ']' : '');
+    }
     return 'панель=[' + (parts.join(',') || 'ничего') + '] renderErr=' + err;
   }
 
@@ -294,7 +325,7 @@
     // список чатов перерисовывается (виртуализация, новые сообщения) — каждый раз бьём по свежей ноде
     for (let round = 0; round < 3; round++) {
       if (!(await clickRound())) break;
-      if (await waitFor(editorReady, round === 0 ? 5000 : 2500)) return chatOpened();
+      if (await waitFor(() => chatOpenReady(item), round === 0 ? 5000 : 2500)) return chatOpened();
       if (renderErrVisible() && !(await recoverRenderError())) return false;
     }
 
@@ -302,7 +333,7 @@
     if (focusNode) {
       try { focusNode.focus(); } catch (e) {}
       keyboardClick(focusNode);
-      if (await waitFor(editorReady, 2500)) return chatOpened();
+      if (await waitFor(() => chatOpenReady(item), 2500)) return chatOpened();
       if (renderErrVisible() && !(await recoverRenderError())) return false;
     }
 
@@ -310,13 +341,13 @@
     if (holdNode) {
       const nickname = holdNode.querySelector("[data-e2e='dm-new-conversation-nickname']");
       pressAndHold(nickname || holdNode);
-      if (await waitFor(editorReady, 3000)) return chatOpened();
+      if (await waitFor(() => chatOpenReady(item), 3000)) return chatOpened();
     }
 
     const last = resolveFresh(item);
     if (last) {
       try { last.click(); } catch (e) {}
-      if (await waitFor(editorReady, 2500)) return chatOpened();
+      if (await waitFor(() => chatOpenReady(item), 2500)) return chatOpened();
     }
 
     return false;
@@ -723,5 +754,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.16)');
+  log('Скрипт загружен и ждёт команд (m4.17)');
+  log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href);
 })();

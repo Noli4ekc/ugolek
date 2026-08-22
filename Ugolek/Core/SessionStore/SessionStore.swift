@@ -13,8 +13,9 @@ final class SessionStore {
     static let uaKey = "tiktok_login_ua"
     static let cookiesKey = "tiktok_cookies_json"
 
+    // Safari-совместимый UA: новые сборки TikTok могут вызывать Chrome-only API и ронять DM-панель в WKWebView
     static let desktopUserAgent =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
 
     var sessionID: String? { KeychainStore.string(forKey: Self.sessionKey) }
     var savedUserAgent: String? {
@@ -78,22 +79,32 @@ final class SessionStore {
         refresh()
     }
 
+    func clearSiteData(keepingCookies: Bool) async {
+        let dataStore = WKWebsiteDataStore.default()
+        let records = await dataStore.dataRecords(
+            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()
+        )
+        let tiktokRecords = records.filter {
+            $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
+        }
+        let types: Set<String>
+        if keepingCookies {
+            types = [
+                WKWebsiteDataType.localStorage,
+                WKWebsiteDataType.indexedDBDatabases,
+                WKWebsiteDataType.serviceWorkerRegistrations,
+                WKWebsiteDataType.webSQLDatabases,
+            ]
+        } else {
+            types = WKWebsiteDataStore.allWebsiteDataTypes()
+        }
+        await dataStore.removeData(ofTypes: types, for: tiktokRecords)
+    }
+
     func logout() {
         KeychainStore.remove(forKey: Self.sessionKey)
         KeychainStore.remove(forKey: Self.uaKey)
-        let dataStore = WKWebsiteDataStore.default()
-        Task {
-            let records = await dataStore.dataRecords(
-                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes()
-            )
-            let tiktokRecords = records.filter {
-                $0.displayName.contains("tiktok") || $0.displayName.contains("byteoversea")
-            }
-            await dataStore.removeData(
-                ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-                for: tiktokRecords
-            )
-        }
+        Task { await clearSiteData(keepingCookies: false) }
         refresh()
     }
 }

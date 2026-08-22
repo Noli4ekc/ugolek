@@ -97,12 +97,17 @@ final class InboxRunner: NSObject {
         }
 
         let first = await runJS(json, handle: handle)
-        if first.ok == false, let error = first.error, error.contains("Чат не открылся") {
-            // правая панель не переключилась — пробуем после полной перезагрузки страницы
-            await reloadPage()
-            return await runJS(json, handle: handle)
-        }
-        return first
+        guard first.ok == false, let error = first.error, error.contains("Чат не открылся") else { return first }
+
+        // правая панель не переключилась — пробуем после полной перезагрузки страницы
+        await reloadPage()
+        let second = await runJS(json, handle: handle)
+        guard second.ok == false, let error2 = second.error, error2.contains("Чат не открылся") else { return second }
+
+        // перезагрузка не помогла — чистим сайтовые данные TikTok (кроме куки): вдруг битое DM-состояние
+        await SessionStore.shared.clearSiteData(keepingCookies: true)
+        await reloadPage()
+        return await runJS(json, handle: handle)
     }
 
     private func runJS(_ json: String, handle: String) async -> BridgeMessage {
@@ -183,7 +188,7 @@ final class InboxRunner: NSObject {
         configuration.userContentController = contentController
 
         let webView = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: configuration)
-        webView.customUserAgent = SessionStore.shared.savedUserAgent
+        webView.customUserAgent = SessionStore.desktopUserAgent
         webView.navigationDelegate = self
         window.addSubview(webView)
         window.layoutIfNeeded()
