@@ -128,12 +128,18 @@
           matches = handle === wanted || nickname === wanted || title === wanted;
         }
         if (matches) {
-          item.click();
+          humanClick(item);
           var opened = await waitFor(() => visibleEditor() !== null, 8000);
           if (!opened) {
-            item.click();
+            humanClick(item);
             opened = await waitFor(() => visibleEditor() !== null, 5000);
-            if (!opened) throw new Error('Чат открылся, но поле ввода не появилось');
+            if (!opened) {
+              const state = Object.keys(collectE2E())
+                .filter((key) => key.indexOf('dm-') === 0 || key.indexOf('chat') === 0 || key.indexOf('message') === 0)
+                .slice(0, 16)
+                .join(',');
+              throw new Error('Чат открылся, но поле ввода не появилось [' + state + ']');
+            }
           }
           return;
         }
@@ -159,15 +165,40 @@
     throw new Error('Пользователь не найден в списке чатов');
   }
 
+  function humanClick(el) {
+    const rect = el.getBoundingClientRect();
+    const options = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      button: 0
+    };
+    try { el.dispatchEvent(new PointerEvent('pointerdown', options)); } catch (e) {}
+    el.dispatchEvent(new MouseEvent('mousedown', options));
+    try { el.dispatchEvent(new PointerEvent('pointerup', options)); } catch (e) {}
+    el.dispatchEvent(new MouseEvent('mouseup', options));
+    el.dispatchEvent(new MouseEvent('click', options));
+  }
+
   function visibleEditor() {
     const primary = document.querySelector("[data-e2e='dm-new-input-editor'] [contenteditable='true']");
     if (primary) return primary;
+    const area = document.querySelector("[data-e2e='message-input-area'] textarea");
+    if (area) return area;
     const editors = Array.from(document.querySelectorAll(CFG.editorSelector));
     return editors.find((el) => el.offsetParent !== null) || editors[0] || null;
   }
 
+  function editorText(el) {
+    if (!el) return '';
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') return el.value || '';
+    return el.innerText || el.textContent || '';
+  }
+
   function editorHasText(editor, text) {
-    return (editor.innerText || editor.textContent || '').includes(text);
+    return editorText(editor).includes(text);
   }
 
   function pasteViaReact(editor, text) {
@@ -202,6 +233,16 @@
 
     editor.focus();
     await sleep(300);
+
+    if (editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT') {
+      const setter = Object.getOwnPropertyDescriptor(
+        editor.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype,
+        'value'
+      ).set;
+      setter.call(editor, text);
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+      await sleep(500);
+    }
 
     if (!editorHasText(editor, text)) {
       document.execCommand('insertText', false, text);
