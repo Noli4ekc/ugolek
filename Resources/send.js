@@ -456,6 +456,20 @@
       setter.call(editor, text);
       editor.dispatchEvent(new Event('input', { bubbles: true }));
       await sleep(CFG.insertMs);
+    } else {
+      // Draft.js слушает beforeinput — ввод через модель редактора, а не в обход неё
+      try {
+        editor.dispatchEvent(new InputEvent('beforeinput', {
+          inputType: 'insertText', data: text, bubbles: true, cancelable: true
+        }));
+      } catch (e) {}
+      await sleep(CFG.insertMs);
+      if (!editorHasText(editor, text)) {
+        try {
+          editor.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true }));
+        } catch (e) {}
+        await sleep(CFG.insertMs);
+      }
     }
 
     if (!editorHasText(editor, text)) {
@@ -472,6 +486,7 @@
       throw new Error('Текст не вставился в поле ввода');
     }
     log('Текст введён');
+    log('После ввода — ' + paneState());
   }
 
   function safeClick(el) {
@@ -517,9 +532,15 @@
         .filter((key) => key.indexOf('dm-') === 0)
         .slice(0, 14)
         .join(',');
+      const buttons = Array.from(document.querySelectorAll('button, [role="button"]'))
+        .filter((b) => b.offsetParent !== null)
+        .map((b) => (((b.innerText || '') + (b.getAttribute('aria-label') || '')).trim().slice(0, 16)) || (b.getAttribute('data-e2e') || '').slice(0, 20))
+        .filter(Boolean).slice(0, 12).join('|');
       const state = 'editorContainer=' + (document.querySelector("[data-e2e='dm-new-input-editor']") ? 'есть' : 'нет')
         + ' editables=' + document.querySelectorAll("[contenteditable='true']").length
-        + ' dm=[' + dmKeys + ']';
+        + ' vis=' + document.visibilityState
+        + ' dm=[' + dmKeys + ']'
+        + ' кнопки=[' + buttons + ']';
       throw new Error('Поле ввода пропало перед отправкой (' + state + ')');
     }
     const keyOptions = {
@@ -754,6 +775,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.17)');
-  log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href);
+  log('Скрипт загружен и ждёт команд (m4.18)');
+  log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState);
 })();
