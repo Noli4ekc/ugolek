@@ -137,10 +137,14 @@
             item.scrollIntoView({ block: 'center' });
           } catch (e) {}
           await sleep(500);
-          log('До клика — ' + paneState());
+          const preState = paneState();
+          log('До клика — ' + preState);
+          if (renderErrVisible() && !(await recoverRenderError())) {
+            throw new Error('Чат не открылся [DM сломана до клика: ' + preState + ']');
+          }
           const opened = await openChat(item);
           if (!opened) {
-            throw new Error('Чат не открылся [' + chatOpenDiagnostics(item) + ']');
+            throw new Error('Чат не открылся [до=' + preState + ' после=' + chatOpenDiagnostics(item) + ']');
           }
           return;
         }
@@ -164,35 +168,6 @@
       }
     }
     throw new Error('Пользователь не найден в списке чатов');
-  }
-
-  function clickViaReact(el) {
-    const rect = el.getBoundingClientRect();
-    const cx = Math.max(1, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
-    const cy = Math.max(1, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
-    for (const key of Object.keys(el)) {
-      if (!key.startsWith('__reactFiber$') && !key.startsWith('__reactInternalInstance$')) continue;
-      let fiber = el[key];
-      for (let depth = 0; fiber && depth < 30; depth++) {
-        const props = fiber.memoizedProps;
-        if (props && typeof props.onClick === 'function') {
-          const fake = {
-            preventDefault: () => {},
-            stopPropagation: () => {},
-            currentTarget: el,
-            target: el,
-            type: 'click',
-            clientX: cx,
-            clientY: cy,
-            button: 0,
-            nativeEvent: {}
-          };
-          try { props.onClick(fake); return true; } catch (e) { return false; }
-        }
-        fiber = fiber.return;
-      }
-    }
-    return false;
   }
 
   function keyboardClick(el) {
@@ -282,6 +257,27 @@
     return 'панель=[' + (parts.join(',') || 'ничего') + '] renderErr=' + err;
   }
 
+  function renderErrVisible() {
+    const el = document.querySelector("[data-e2e='dm-render-error']");
+    return !!el && el.offsetParent !== null;
+  }
+
+  async function recoverRenderError() {
+    const errEl = document.querySelector("[data-e2e='dm-render-error']");
+    if (!errEl) return false;
+    const scope = errEl.parentElement || errEl;
+    const buttons = Array.from(scope.querySelectorAll('button, [role="button"]'));
+    const retry = buttons.find((b) => {
+      const label = ((b.innerText || '') + ' ' + (b.getAttribute('aria-label') || '')).toLowerCase();
+      return /try again|retry|reload|refresh|повтор|обнов|перезагруз/.test(label);
+    });
+    if (!retry || retry.offsetParent === null) return false;
+    log('Жму кнопку повтора в оверлее ошибки');
+    safeClick(retry);
+    await waitFor(() => !renderErrVisible(), 6000);
+    return !renderErrVisible();
+  }
+
   async function openChat(item) {
     try { item.scrollIntoView({ block: 'center' }); } catch (e) {}
     await settleRect(item, 2000);
@@ -296,21 +292,18 @@
     };
 
     // список чатов перерисовывается (виртуализация, новые сообщения) — каждый раз бьём по свежей ноде
-    if (await clickRound() && await waitFor(editorReady, 5000)) return chatOpened();
-    if (await clickRound() && await waitFor(editorReady, 2500)) return chatOpened();
-    if (await clickRound() && await waitFor(editorReady, 2500)) return chatOpened();
+    for (let round = 0; round < 3; round++) {
+      if (!(await clickRound())) break;
+      if (await waitFor(editorReady, round === 0 ? 5000 : 2500)) return chatOpened();
+      if (renderErrVisible() && !(await recoverRenderError())) return false;
+    }
 
     const focusNode = resolveFresh(item);
     if (focusNode) {
       try { focusNode.focus(); } catch (e) {}
       keyboardClick(focusNode);
       if (await waitFor(editorReady, 2500)) return chatOpened();
-    }
-
-    const reactNode = resolveFresh(item);
-    if (reactNode) {
-      clickViaReact(reactNode);
-      if (await waitFor(editorReady, 3000)) return chatOpened();
+      if (renderErrVisible() && !(await recoverRenderError())) return false;
     }
 
     const holdNode = resolveFresh(item);
@@ -730,5 +723,5 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.15)');
+  log('Скрипт загружен и ждёт команд (m4.16)');
 })();
