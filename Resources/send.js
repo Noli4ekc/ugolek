@@ -97,7 +97,6 @@
 
   function nudgeScroll(target, delta) {
     target.scrollTop += delta;
-    target.dispatchEvent(new WheelEvent('wheel', { deltaY: delta, bubbles: true, cancelable: true }));
     target.dispatchEvent(new Event('scroll', { bubbles: true }));
   }
 
@@ -148,6 +147,7 @@
       if (refreshed) list = refreshed;
 
       if (target.scrollTop === before) {
+        target.dispatchEvent(new WheelEvent('wheel', { deltaY: 800, bubbles: true, cancelable: true }));
         const winBefore = window.scrollY;
         window.scrollBy(0, 800);
         await sleep(600);
@@ -447,18 +447,32 @@
         return;
       }
 
-      await typeMessage(payload.message || '');
-      await clickSend();
-      await sleep(CFG.sendConfirmMs);
-
-      const verified = await verifySent(payload.message || '');
-      if (verified) {
-        log('Отправка подтверждена');
-        post({ type: 'result', username, ok: true, detail: 'подтверждено' });
-      } else {
-        log('Отправлено, но подтверждение не увидено');
-        post({ type: 'result', username, ok: true, detail: 'отправлено без подтверждения' });
+      let delivered = false;
+      let lastError = null;
+      for (let attempt = 1; attempt <= 2 && !delivered; attempt++) {
+        try {
+          if (attempt > 1) {
+            log('Повторная попытка: открываю чат заново');
+            await findAndOpenChat(username, !!payload.isGroup);
+          }
+          await typeMessage(payload.message || '');
+          await clickSend();
+          await sleep(CFG.sendConfirmMs);
+          const verified = await verifySent(payload.message || '');
+          if (verified) {
+            log('Отправка подтверждена');
+            post({ type: 'result', username, ok: true, detail: 'подтверждено' });
+          } else {
+            log('Отправлено, но подтверждение не увидено');
+            post({ type: 'result', username, ok: true, detail: 'отправлено без подтверждения' });
+          }
+          delivered = true;
+        } catch (err) {
+          lastError = err;
+          log('Попытка ' + attempt + ' не удалась: ' + String((err && err.message) || err));
+        }
       }
+      if (!delivered) throw lastError;
     } catch (err) {
       post({
         type: 'result',
