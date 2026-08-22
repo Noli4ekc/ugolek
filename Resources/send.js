@@ -146,6 +146,12 @@
             }
             log('Панель восстановлена кликом по другому чату');
           }
+          if (!paneAlive()) {
+            log('Панель пуста — жму nav-messages, чтобы перемонтировать страницу сообщений');
+            const nav = document.querySelector("[data-e2e='nav-messages']");
+            if (nav) humanClick(nav);
+            await waitFor(paneAlive, 6000);
+          }
           const opened = await openChat(item);
           if (!opened) {
             throw new Error('Чат не открылся [до=' + preState + ' после=' + chatOpenDiagnostics(item) + ']');
@@ -286,6 +292,12 @@
         + (buttons ? ' кнопки=[' + buttons + ']' : '');
     }
     return 'панель=[' + (parts.join(',') || 'ничего') + '] renderErr=' + err;
+  }
+
+  function paneAlive() {
+    const chatbox = document.querySelector("[data-e2e='dm-new-chatbox']");
+    const inbox = document.querySelector("[data-e2e='inbox-bar'], [data-e2e='inbox-content']");
+    return (!!chatbox && chatbox.offsetParent !== null) || (!!inbox && inbox.offsetParent !== null);
   }
 
   function renderErrVisible() {
@@ -446,6 +458,7 @@
     if (!editor) throw new Error('Не найдено поле ввода сообщения');
 
     editor.focus();
+    log('Фокус: hasFocus=' + document.hasFocus() + ' active=' + String(document.activeElement && (document.activeElement.className || document.activeElement.tagName)).slice(0, 60));
     await sleep(CFG.focusMs);
 
     if (editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT') {
@@ -732,6 +745,9 @@
       log('Ищу чат: ' + username);
       await findAndOpenChat(username, !!payload.isGroup);
 
+      await sleep(3000);
+      log('Панель через 3 с после открытия: ' + paneState());
+
       if (payload.dryRun) {
         log('Пробный режим: чат открыт, отправка пропущена');
         post({ type: 'result', username, ok: true, detail: 'пробный режим' });
@@ -775,6 +791,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.18)');
+  log('Скрипт загружен и ждёт команд (m4.19)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState);
 })();
