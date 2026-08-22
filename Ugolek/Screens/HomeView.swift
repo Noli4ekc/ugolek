@@ -124,28 +124,29 @@ struct HomeView: View {
         return "Отправит сообщение \(store.friendsDueToday.count) друзьям"
     }
 
+    private func prettyJSON(_ raw: String) -> String {
+        guard let data = raw.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let encoded = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+              let text = String(data: encoded, encoding: .utf8) else { return raw }
+        return text
+    }
+
     private func runDiagnostics() {
         diagActive = true
         Task {
             var parts: [String] = []
             do {
                 try await InboxRunner.shared.ensureLoaded()
-                for attempt in 1...3 {
+                for attempt in 1...2 {
                     let raw = await InboxRunner.shared.discovery()
-                    let pretty: String
-                    if let data = raw.data(using: .utf8),
-                       let object = try? JSONSerialization.jsonObject(with: data),
-                       let encoded = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
-                       let text = String(data: encoded, encoding: .utf8) {
-                        pretty = text
-                    } else {
-                        pretty = raw
-                    }
-                    parts.append("=== Попытка \(attempt) ===\n\(pretty)")
-                    if attempt < 3 {
-                        try? await Task.sleep(for: .seconds(8))
+                    parts.append("=== Список чатов (попытка \(attempt)) ===\n" + prettyJSON(raw))
+                    if attempt < 2 {
+                        try? await Task.sleep(for: .seconds(6))
                     }
                 }
+                let probe = await InboxRunner.shared.chatProbe()
+                parts.append("=== Открытый чат (снимок) ===\n" + prettyJSON(probe))
                 diagText = parts.joined(separator: "\n\n")
             } catch {
                 diagText = "Не удалось загрузить страницу сообщений:\n\((error as? LocalizedError)?.errorDescription ?? String(describing: error))"

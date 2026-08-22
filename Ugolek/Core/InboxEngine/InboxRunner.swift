@@ -112,6 +112,17 @@ final class InboxRunner: NSObject {
         return "Диагностика не выполнена"
     }
 
+    func chatProbe() async -> String {
+        guard let webView else { return "Движок ещё не загружался" }
+        _ = try? await webView.evaluateJavaScript("Ugolek.openFirstChat()")
+        try? await Task.sleep(for: .seconds(4))
+        if let result = try? await webView.evaluateJavaScript("JSON.stringify(Ugolek.chatSnapshot())"),
+           let text = result as? String {
+            return text
+        }
+        return "Снимок чата не выполнен"
+    }
+
     func teardown() {
         webView?.stopLoading()
         webView?.removeFromSuperview()

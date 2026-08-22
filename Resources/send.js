@@ -124,7 +124,9 @@
         if (isGroup) {
           matches = itemTitle(item).toLowerCase() === wanted || nickname === wanted;
         } else {
-          matches = handleFromItem(item) === wanted || nickname === wanted;
+          const handle = handleFromItem(item);
+          const title = itemTitle(item).toLowerCase();
+          matches = handle === wanted || nickname === wanted || title === wanted;
         }
         if (matches) {
           item.click();
@@ -233,25 +235,30 @@
       keyCode: 13,
       which: 13,
       bubbles: true,
-      cancelable: true,
+      cancelable: true
     };
-    editor.dispatchEvent(new KeyboardEvent('keydown', keyOptions));
-    editor.dispatchEvent(new KeyboardEvent('keyup', keyOptions));
+    for (const type of ['keydown', 'keypress', 'keyup']) {
+      editor.dispatchEvent(new KeyboardEvent(type, keyOptions));
+      document.dispatchEvent(new KeyboardEvent(type, keyOptions));
+    }
     log('Отправка клавишей Enter');
   }
 
-  function discovery() {
+  const classOf = (el) => (typeof el.className === 'string' ? el.className : '');
+
+  function collectE2E(root) {
     const e2e = {};
-    document.querySelectorAll('[data-e2e]').forEach((el) => {
+    (root || document).querySelectorAll('[data-e2e]').forEach((el) => {
       const value = el.getAttribute('data-e2e');
       e2e[value] = (e2e[value] || 0) + 1;
     });
-    const e2eSorted = {};
-    Object.keys(e2e)
-      .sort()
-      .forEach((key) => { e2eSorted[key] = e2e[key]; });
+    const sorted = {};
+    Object.keys(e2e).sort().forEach((key) => { sorted[key] = e2e[key]; });
+    return sorted;
+  }
 
-    const classOf = (el) => (typeof el.className === 'string' ? el.className : '');
+  function discovery() {
+    const e2eSorted = collectE2E();
 
     const rootChildren = [];
     const root = document.querySelector('#app') || document.querySelector('#main') || document.body;
@@ -280,10 +287,22 @@
     };
     walk(document.body, 0);
 
+    const chats = [];
+    Array.from(document.querySelectorAll("[data-e2e='dm-new-conversation-item']"))
+      .slice(0, 12)
+      .forEach((item) => {
+        chats.push({
+          handle: handleFromItem(item),
+          nickname: nicknameOfItem(item),
+          title: itemTitle(item)
+        });
+      });
+
     return {
       url: location.href,
       ready: document.readyState,
       e2e: e2eSorted,
+      chats,
       profileLinks: document.querySelectorAll("a[href*='/@']").length,
       editables: document.querySelectorAll("[contenteditable='true']").length,
       iframes: document.querySelectorAll('iframe').length,
@@ -312,6 +331,51 @@
       if (bubbles.length === 0 && (pane.innerText || '').includes(text)) return true;
     }
     return false;
+  }
+
+  function openFirstChat() {
+    const items = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
+    if (items[0]) items[0].click();
+    return items.length;
+  }
+
+  function chatSnapshot() {
+    const buttons = [];
+    document.querySelectorAll('button, [role="button"]').forEach((b) => {
+      if (b.offsetParent === null) return;
+      const text = (b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 24);
+      buttons.push({
+        text,
+        e2e: b.getAttribute('data-e2e'),
+        cls: classOf(b).split(' ').filter(Boolean).slice(0, 2).join('.')
+      });
+    });
+
+    const editables = [];
+    document.querySelectorAll("[contenteditable='true']").forEach((el) => {
+      const owner = el.closest('[data-e2e]');
+      editables.push({
+        cls: classOf(el).split(' ').filter(Boolean).slice(0, 2).join('.'),
+        ownerE2E: owner ? owner.getAttribute('data-e2e') : null
+      });
+    });
+
+    const chatbox = document.querySelector("[data-e2e='dm-new-chatbox']");
+    let chatboxButtons = null;
+    if (chatbox) {
+      chatboxButtons = Array.from(chatbox.querySelectorAll('button, [role="button"]')).map((b) => {
+        const label = (b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 24);
+        return label || b.getAttribute('data-e2e') || classOf(b).slice(0, 30);
+      });
+    }
+
+    return {
+      url: location.href,
+      e2e: collectE2E(),
+      buttons: buttons.slice(0, 20),
+      editables,
+      chatboxButtons
+    };
   }
 
   async function run(payload) {
@@ -348,6 +412,6 @@
     }
   }
 
-  window.Ugolek = { log, discovery, run };
+  window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
   log('Скрипт загружен и ждёт команд');
 })();
