@@ -366,8 +366,27 @@
   }
 
   function chatOpened() {
-    log('Чат открыт — ' + paneState());
+    cachedSendButton = findSendButton();
+    log('Чат открыт — ' + paneState() + (cachedSendButton ? ' кнопкаОтправки=найдена' : ' кнопкаОтправки=НЕТ'));
     return true;
+  }
+
+  let cachedSendButton = null;
+
+  function findSendButton() {
+    for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
+      for (const button of document.querySelectorAll(selector)) {
+        if (button.offsetParent !== null) return button;
+      }
+    }
+    const chatbox = document.querySelector("[data-e2e='dm-new-chatbox']");
+    if (chatbox) {
+      for (const button of chatbox.querySelectorAll('button, [role="button"]')) {
+        const label = ((button.innerText || '') + ' ' + (button.getAttribute('aria-label') || '')).toLowerCase();
+        if (button.offsetParent !== null && /send|отправ/.test(label) && !/media|медиа|файл/.test(label)) return button;
+      }
+    }
+    return null;
   }
 
   function chatOpenDiagnostics(item) {
@@ -457,9 +476,15 @@
     const editor = visibleEditor();
     if (!editor) throw new Error('Не найдено поле ввода сообщения');
 
-    editor.focus();
-    log('Фокус: hasFocus=' + document.hasFocus() + ' active=' + String(document.activeElement && (document.activeElement.className || document.activeElement.tagName)).slice(0, 60));
-    await sleep(CFG.focusMs);
+    // focus() не зовём: скрытое окно не становится key (hasFocus=false), и фокус-цикл мог ронять панель
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } catch (e) {}
 
     if (editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT') {
       const setter = Object.getOwnPropertyDescriptor(
@@ -468,7 +493,6 @@
       ).set;
       setter.call(editor, text);
       editor.dispatchEvent(new Event('input', { bubbles: true }));
-      await sleep(CFG.insertMs);
     } else {
       // Draft.js слушает beforeinput — ввод через модель редактора, а не в обход неё
       try {
@@ -476,30 +500,24 @@
           inputType: 'insertText', data: text, bubbles: true, cancelable: true
         }));
       } catch (e) {}
-      await sleep(CFG.insertMs);
-      if (!editorHasText(editor, text)) {
-        try {
-          editor.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true }));
-        } catch (e) {}
-        await sleep(CFG.insertMs);
-      }
     }
+    await sleep(80);
 
     if (!editorHasText(editor, text)) {
       document.execCommand('insertText', false, text);
-      await sleep(CFG.insertMs);
+      await sleep(80);
     }
 
     if (!editorHasText(editor, text)) {
       pasteViaReact(editor, text);
-      await sleep(CFG.insertMs);
+      await sleep(80);
     }
 
     if (!editorHasText(editor, text)) {
       throw new Error('Текст не вставился в поле ввода');
     }
     log('Текст введён');
-    log('После ввода — ' + paneState());
+    log('После ввода — ' + paneState() + ' hasFocus=' + document.hasFocus());
   }
 
   function safeClick(el) {
@@ -511,6 +529,15 @@
   }
 
   async function clickSend() {
+    if (cachedSendButton) {
+      const button = cachedSendButton;
+      cachedSendButton = null;
+      if (button.isConnected && button.offsetParent !== null) {
+        safeClick(button);
+        log('Отправка заранее найденной кнопкой');
+        return;
+      }
+    }
     await sleep(CFG.sendScanMs);
 
     for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
@@ -745,9 +772,6 @@
       log('Ищу чат: ' + username);
       await findAndOpenChat(username, !!payload.isGroup);
 
-      await sleep(3000);
-      log('Панель через 3 с после открытия: ' + paneState());
-
       if (payload.dryRun) {
         log('Пробный режим: чат открыт, отправка пропущена');
         post({ type: 'result', username, ok: true, detail: 'пробный режим' });
@@ -791,6 +815,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.19)');
-  log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState);
+  log('Скрипт загружен и ждёт команд (m4.20)');
+  log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();

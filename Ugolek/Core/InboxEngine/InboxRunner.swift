@@ -96,6 +96,7 @@ final class InboxRunner: NSObject {
             return BridgeMessage(type: "result", username: handle, ok: false, error: "Не удалось собрать команду")
         }
 
+        window?.makeKey()
         let first = await runJS(json, handle: handle)
         guard first.ok == false, let error = first.error, error.contains("Чат не открылся") else { return first }
 
@@ -180,6 +181,8 @@ final class InboxRunner: NSObject {
         window.alpha = 0.01
         window.backgroundColor = .clear
         window.isHidden = false
+        // key-окно: иначе document.hasFocus()=false и TikTok сворачивает чат после ввода
+        window.makeKey()
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
