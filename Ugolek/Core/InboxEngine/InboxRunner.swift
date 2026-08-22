@@ -42,7 +42,7 @@ final class InboxRunner: NSObject {
     func ensureLoaded() async throws {
         if webView != nil, loadedURL != nil { return }
 
-        try makeWindowAndWebView()
+        try await makeWindowAndWebView()
 
         let url: URL = try await withCheckedThrowingContinuation { cont in
             loadContinuation = cont
@@ -57,6 +57,14 @@ final class InboxRunner: NSObject {
         }
 
         if url.path.contains("/login") { throw InboxError.loginRequired }
+
+        try await Task.sleep(for: .seconds(2))
+        if let result = try? await webView?.evaluateJavaScript(
+            "document.querySelector('[data-e2e=top-login-button]') !== null"
+        ), let loggedOut = result as? Bool, loggedOut {
+            SessionStore.shared.invalidate()
+            throw InboxError.loginRequired
+        }
 
         try injectScript()
         try await Task.sleep(for: .seconds(3))
@@ -134,7 +142,7 @@ final class InboxRunner: NSObject {
         loadedURL = nil
     }
 
-    private func makeWindowAndWebView() throws {
+    private func makeWindowAndWebView() async throws {
         guard webView == nil else { return }
 
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -161,6 +169,8 @@ final class InboxRunner: NSObject {
 
         self.window = window
         self.webView = webView
+
+        await SessionStore.shared.restoreCookies(into: configuration.websiteDataStore.httpCookieStore)
     }
 
     private func injectScript() throws {

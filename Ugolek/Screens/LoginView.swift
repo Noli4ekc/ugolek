@@ -58,6 +58,10 @@ struct TikTokLoginWebView: UIViewRepresentable {
                       !sid.value.isEmpty else { return }
                 self.handled = true
                 SessionStore.shared.save(sessionID: sid.value, userAgent: webView.customUserAgent)
+                let tiktokCookies = cookies.filter {
+                    $0.domain.contains("tiktok") || $0.domain.contains("byteoversea")
+                }
+                SessionStore.shared.saveCookies(tiktokCookies)
                 DispatchQueue.main.async { self.onSuccess() }
             }
         }
