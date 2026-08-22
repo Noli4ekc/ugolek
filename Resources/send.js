@@ -202,14 +202,55 @@
   }
 
   function discovery() {
-    const list = chatList();
+    const e2e = {};
+    document.querySelectorAll('[data-e2e]').forEach((el) => {
+      const value = el.getAttribute('data-e2e');
+      e2e[value] = (e2e[value] || 0) + 1;
+    });
+    const e2eSorted = {};
+    Object.keys(e2e)
+      .sort()
+      .forEach((key) => { e2eSorted[key] = e2e[key]; });
+
+    const classOf = (el) => (typeof el.className === 'string' ? el.className : '');
+
+    const rootChildren = [];
+    const root = document.querySelector('#app') || document.querySelector('#main') || document.body;
+    Array.from(root.children).slice(0, 15).forEach((el) => {
+      const cls = classOf(el).split(' ').filter(Boolean).slice(0, 3).join('.');
+      const tag = el.tagName.toLowerCase();
+      const marker = el.getAttribute('data-e2e');
+      rootChildren.push(tag + (cls ? '.' + cls : '') + (marker ? '[' + marker + ']' : ''));
+    });
+
+    const scrollables = [];
+    const walk = (node, depth) => {
+      if (depth > 9 || scrollables.length >= 6) return;
+      for (const child of Array.from(node.children)) {
+        if (child.scrollHeight > child.clientHeight + 100 && child.clientHeight > 200) {
+          scrollables.push({
+            cls: classOf(child).slice(0, 80),
+            scrollHeight: child.scrollHeight,
+            clientHeight: child.clientHeight,
+            profileLinks: child.querySelectorAll("a[href*='/@']").length,
+            e2eInside: child.querySelectorAll('[data-e2e]').length
+          });
+        }
+        walk(child, depth + 1);
+      }
+    };
+    walk(document.body, 0);
+
     return {
       url: location.href,
-      chatSelector: list ? list.selector : null,
-      chatCount: list ? list.items.length : 0,
-      sampleTitles: list ? list.items.slice(0, 8).map(itemTitle) : [],
-      hasEditor: !!document.querySelector(CFG.editorSelector),
-      headerText: (document.querySelector(CFG.headerSelector) || {}).innerText || null,
+      ready: document.readyState,
+      e2e: e2eSorted,
+      profileLinks: document.querySelectorAll("a[href*='/@']").length,
+      editables: document.querySelectorAll("[contenteditable='true']").length,
+      iframes: document.querySelectorAll('iframe').length,
+      scrollables,
+      rootChildren,
+      bodySnippet: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 300)
     };
   }
 

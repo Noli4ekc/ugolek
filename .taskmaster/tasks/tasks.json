@@ -267,53 +267,57 @@
       "id": "20",
       "title": "Ежедневное уведомление с запуском по тапу",
       "description": "Локальное уведомление в выбранное время; тап открывает приложение и запускает прогон; итоговое уведомление.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "19"
       ],
       "priority": "medium",
       "details": "Коммит: feat: daily notification with tap-to-run",
       "testStrategy": "Тап по уведомлению запускает прогон",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-22T00:05:13.022Z"
     },
     {
       "id": "21",
       "title": "Снуз-напоминания до выполнения",
       "description": "Повтор напоминания каждые 30–60 минут, пока прогон не выполнен.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "20"
       ],
       "priority": "medium",
       "details": "Коммит: feat: snooze reminders until done",
       "testStrategy": "Напоминание повторяется после пропущенного прогона",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-22T00:05:13.108Z"
     },
     {
       "id": "22",
       "title": "Shortcuts: App Intent «Продлить огоньки» + туториал",
       "description": "App Intent (openAppWhenRun) + пошаговый туториал автоматизации «Время суток».",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "21"
       ],
       "priority": "medium",
       "details": "Коммит: feat: Shortcuts app intent + tutorial",
       "testStrategy": "Shortcuts-автоматизация запускает прогон без тапа (телефон разблокирован)",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-22T00:05:13.130Z"
     },
     {
       "id": "23",
       "title": "BGTaskScheduler: догоняющие проверки. Тег m4-automation. КОНТРОЛЬНАЯ ТОЧКА",
       "description": "Если день пропущен — приложение предлагает прогон; проверка «кому сегодня надо» при открытии. Пользователь подтверждает: сутки на автомате.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "22"
       ],
       "priority": "medium",
       "details": "Коммит: feat: catch-up background task. Тег: m4-automation",
       "testStrategy": "Сутки прожиты с одним тапом",
-      "subtasks": []
+      "subtasks": [],
+      "updatedAt": "2026-08-22T00:05:13.150Z"
     },
     {
       "id": "24",
@@ -436,9 +440,9 @@
   ],
   "metadata": {
     "version": "1.0.0",
-    "lastModified": "2026-08-21T23:51:15.438Z",
+    "lastModified": "2026-08-22T00:05:13.150Z",
     "taskCount": 32,
-    "completedCount": 17,
+    "completedCount": 21,
     "tags": [
       "master"
     ]

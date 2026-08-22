@@ -127,22 +127,29 @@ struct HomeView: View {
     private func runDiagnostics() {
         diagActive = true
         Task {
-            var report: String
+            var parts: [String] = []
             do {
                 try await InboxRunner.shared.ensureLoaded()
-                let raw = await InboxRunner.shared.discovery()
-                if let data = raw.data(using: .utf8),
-                   let object = try? JSONSerialization.jsonObject(with: data),
-                   let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
-                   let text = String(data: pretty, encoding: .utf8) {
-                    report = text
-                } else {
-                    report = raw
+                for attempt in 1...3 {
+                    let raw = await InboxRunner.shared.discovery()
+                    let pretty: String
+                    if let data = raw.data(using: .utf8),
+                       let object = try? JSONSerialization.jsonObject(with: data),
+                       let encoded = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+                       let text = String(data: encoded, encoding: .utf8) {
+                        pretty = text
+                    } else {
+                        pretty = raw
+                    }
+                    parts.append("=== Попытка \(attempt) ===\n\(pretty)")
+                    if attempt < 3 {
+                        try? await Task.sleep(for: .seconds(8))
+                    }
                 }
+                diagText = parts.joined(separator: "\n\n")
             } catch {
-                report = "Не удалось загрузить страницу сообщений:\n\((error as? LocalizedError)?.errorDescription ?? String(describing: error))"
+                diagText = "Не удалось загрузить страницу сообщений:\n\((error as? LocalizedError)?.errorDescription ?? String(describing: error))"
             }
-            diagText = report
             diagActive = false
         }
     }
