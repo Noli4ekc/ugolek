@@ -97,7 +97,7 @@ final class InboxRunner: NSObject {
         }
 
         window?.makeKey()
-        _ = webView?.becomeFirstResponder()
+        if let webView { _ = webView.becomeFirstResponder() }
         let first = await runJS(json, handle: handle)
         guard first.ok == false, let error = first.error, error.contains("Чат не открылся") else { return first }
 
