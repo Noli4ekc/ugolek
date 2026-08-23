@@ -182,9 +182,8 @@ final class InboxRunner: NSObject {
         window.alpha = 0.01
         window.backgroundColor = .clear
         window.isHidden = false
-        // key-окно + first responder: иначе document.hasFocus()=false и TikTok сворачивает чат после ввода
+        // key-окно: иначе document.hasFocus()=false и TikTok сворачивает чат после ввода
         window.makeKey()
-        _ = webView.becomeFirstResponder()
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
@@ -200,6 +199,7 @@ final class InboxRunner: NSObject {
 
         self.window = window
         self.webView = webView
+        _ = webView.becomeFirstResponder()
 
         await SessionStore.shared.restoreCookies(into: configuration.websiteDataStore.httpCookieStore)
     }
