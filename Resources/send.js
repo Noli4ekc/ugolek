@@ -93,10 +93,21 @@
   }
 
   function handleFromItem(item) {
+    // в веб-списке TikTok ссылки a[href*='/@'] отсутствуют (handle виден только в открытом чате)
+    // поэтому handle почти всегда null — поиск идёт по никнейму
     const link = item.querySelector("a[href*='/@']");
     if (!link) return null;
     const match = link.getAttribute('href').match(/@([^/?#]+)/);
     return match ? match[1].toLowerCase() : null;
+  }
+
+  // частичное совпадение: никнейм "нн" может быть отображением пользователя @nnnnll67nl
+  // проверяем: wanted начинается с ника ИЛИ ник является началом wanted
+  function fuzzyMatch(wanted, candidate) {
+    if (!candidate) return false;
+    const c = candidate.toLowerCase();
+    return c === wanted
+      || (wanted.length >= 2 && c.length >= 2 && (wanted.startsWith(c) || c.startsWith(wanted)));
   }
 
   function waitFor(test, timeoutMs, pollMs) {
@@ -179,11 +190,14 @@
         const nickname = nicknameOfItem(item).toLowerCase();
         let matches;
         if (isGroup) {
-          matches = itemTitle(item).toLowerCase() === wanted || nickname === wanted;
+          matches = itemTitle(item).toLowerCase() === wanted || nickname === wanted
+            || fuzzyMatch(wanted, itemTitle(item)) || fuzzyMatch(wanted, nickname);
         } else {
           const handle = handleFromItem(item);
           const title = itemTitle(item).toLowerCase();
-          matches = handle === wanted || nickname === wanted || title === wanted;
+          matches = handle === wanted || nickname === wanted || title === wanted
+            || fuzzyMatch(wanted, nickname) || fuzzyMatch(wanted, title)
+            || (handle && fuzzyMatch(wanted, handle));
         }
         if (matches) {
           try {
@@ -905,6 +919,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.23)');
+  log('Скрипт загружен и ждёт команд (m4.24)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();
