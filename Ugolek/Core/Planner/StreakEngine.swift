@@ -18,6 +18,7 @@ enum StreakEngine {
         let start = Date()
 
         var logLines: [String] = []
+        var lastRandomMessage: String? = nil
         InboxRunner.shared.onLog = { logLines.append($0) }
         defer { InboxRunner.shared.onLog = nil }
 
@@ -51,11 +52,16 @@ enum StreakEngine {
 
             let reply = await InboxRunner.shared.send(
                 to: friend.handle,
-                message: store.settings.messageText,
+                message: store.settings.useRandomMessages
+                    ? MessagePool.random(excluding: lastRandomMessage)
+                    : store.settings.messageText,
                 isGroup: friend.isGroup,
                 dryRun: dryRun,
                 fast: store.settings.fastMode
             )
+            if store.settings.useRandomMessages {
+                lastRandomMessage = reply.ok ?? false ? (store.settings.messageText) : lastRandomMessage
+            }
             let ok = reply.ok ?? false
             results.append(FriendResult(
                 friendId: friend.id,

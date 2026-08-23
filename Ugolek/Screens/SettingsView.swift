@@ -8,16 +8,23 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField(
-                        "Текст сообщения",
-                        text: $store.settings.messageText,
-                        axis: .vertical
-                    )
-                    .lineLimit(1...3)
+                    Toggle("Случайные фразы", isOn: $store.settings.useRandomMessages)
+                    if !store.settings.useRandomMessages {
+                        TextField(
+                            "Текст сообщения",
+                            text: $store.settings.messageText,
+                            axis: .vertical
+                        )
+                        .lineLimit(1...3)
+                    }
                 } header: {
                     Text("Сообщение")
                 } footer: {
-                    Text("Это сообщение Уголёк отправит каждому другу. Не слишком длинное — как обычное «пиши мне».")
+                    if store.settings.useRandomMessages {
+                        Text("Уголёк берёт короткую фразу из пула (~30 вариантов) и отправляет разную каждому другу — без повторов подряд.")
+                    } else {
+                        Text("Это сообщение Уголёк отправит каждому другу. Не слишком длинное — как обычное «пиши мне».")
+                    }
                 }
 
                 Section {
@@ -33,14 +40,13 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Случайные фразы", isOn: $store.settings.useRandomMessages)
                     Toggle("Пропускать недоступных", isOn: $store.settings.skipUnreachable)
                     Toggle("Только тем, у кого есть огонёк", isOn: $store.settings.messageOnlyWithFlame)
                     Toggle("Быстрый режим", isOn: $store.settings.fastMode)
                 } header: {
                     Text("Поведение")
                 } footer: {
-                    Text("Случайные фразы — вместо одного текста Уголёк берёт короткую фразу из пула. Пропускать недоступных — если чат друга не нашёлся, прогон продолжится с остальными. «Только с огоньком» — письма уходят лишь друзьям с включённым флажком 🔥 (в веб-версии TikTok огонёк не отображается, поэтому он отмечается вручную у каждого друга). Быстрый режим — короче паузы между друзьями (~3–4 раза быстрее); чуть выше риск, что TikTok заподозрит автоматизацию.")
+                    Text("Пропускать недоступных — если чат друга не нашёлся, прогон продолжится с остальными. «Только с огоньком» — письма уходят лишь друзьям с включённым флажком 🔥 (в веб-версии TikTok огонёк не отображается, поэтому он отмечается вручную у каждого друга). Быстрый режим — короче паузы между друзьями (~3–4 раза быстрее); чуть выше риск, что TikTok заподозрит автоматизацию.")
                 }
 
                 Section {
