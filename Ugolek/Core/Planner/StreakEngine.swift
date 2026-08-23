@@ -63,11 +63,12 @@ enum StreakEngine {
                 lastRandomMessage = reply.ok ?? false ? (store.settings.messageText) : lastRandomMessage
             }
             let ok = reply.ok ?? false
+            let status: FriendSendStatus = ok ? .sent : (store.settings.skipUnreachable ? .skipped : .failed)
             results.append(FriendResult(
                 friendId: friend.id,
                 handle: friend.handle,
-                status: ok ? .sent : .failed,
-                detail: reply.error ?? reply.detail
+                status: status,
+                detail: ok ? nil : (reply.error ?? reply.detail)
             ))
 
             if !ok && !store.settings.skipUnreachable { break }
