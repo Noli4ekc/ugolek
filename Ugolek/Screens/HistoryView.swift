@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct HistoryView: View {
     @State private var store = AppStore.shared
@@ -14,22 +15,37 @@ struct HistoryView: View {
                     )
                 } else {
                     List {
-                        ForEach(store.runs) { run in
-                            NavigationLink {
-                                RunDetailView(run: run)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(run.date, format: .dateTime.day().month().hour().minute())
-                                        Spacer()
-                                        Text(String(format: "%.0f с", run.durationSeconds))
+                        if !store.runs.isEmpty {
+                            Section {
+                                LabeledContent("Всего прогонов", value: "\(store.runs.count)")
+                                LabeledContent("Успешных", value: successRate)
+                                LabeledContent("Отправлено сообщений", value: "\(totalSent)")
+                                LabeledContent("Ошибок", value: "\(totalFailed)")
+                            } header: {
+                                Text("Сводка")
+                            }
+                        }
+
+                        Section {
+                            ForEach(store.runs) { run in
+                                NavigationLink {
+                                    RunDetailView(run: run)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Text(run.date, format: .dateTime.day().month().hour().minute())
+                                            Spacer()
+                                            Text(String(format: "%.0f с", run.durationSeconds))
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Text("Отправлено: \(run.sentCount) · Ошибки: \(run.failedCount) · Пропущено: \(run.skippedCount)")
+                                            .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
-                                    Text("Отправлено: \(run.sentCount) · Ошибки: \(run.failedCount) · Пропущено: \(run.skippedCount)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
                                 }
                             }
+                        } header: {
+                            Text("Прогоны")
                         }
                     }
                 }
@@ -37,10 +53,19 @@ struct HistoryView: View {
             .navigationTitle("История")
         }
     }
+
+    private var totalSent: Int { store.runs.reduce(0) { $0 + $1.sentCount } }
+    private var totalFailed: Int { store.runs.reduce(0) { $0 + $1.failedCount } }
+    private var successRate: String {
+        let total = totalSent + totalFailed
+        guard total > 0 else { return "—" }
+        return String(format: "%.0f%%", Double(totalSent) / Double(total) * 100)
+    }
 }
 
 struct RunDetailView: View {
     let run: RunRecord
+    @State private var showShareSheet = false
 
     var body: some View {
         List {
@@ -84,9 +109,24 @@ struct RunDetailView: View {
                         .textSelection(.enabled)
                 }
             }
+
+            if let log = run.log, !log.isEmpty {
+                Section {
+                    Button {
+                        showShareSheet = true
+                    } label: {
+                        Label("Экспортировать лог", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
         }
         .navigationTitle(Text(run.date, format: .dateTime.day().month().hour().minute()))
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showShareSheet) {
+            if let log = run.log {
+                ShareSheet(items: [log])
+            }
+        }
     }
 
     private func iconName(_ status: FriendSendStatus) -> String {
@@ -112,4 +152,14 @@ struct RunDetailView: View {
         case .skipped: return "пропущено"
         }
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
