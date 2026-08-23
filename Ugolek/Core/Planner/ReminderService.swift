@@ -35,11 +35,27 @@ final class ReminderService: NSObject, UNUserNotificationCenterDelegate {
         content.body = "Пора продлить огоньки — тапни, и я напишу твоим друзьям 🔥"
         content.sound = .default
 
-        var comps = DateComponents()
-        comps.hour = settings.dailyHour
-        comps.minute = settings.dailyMinute
+        // дрожание ±15 мин: вместо повторяющегося триггера планируем
+        // на конкретный день со случайным смещением и перепланируем после срабатывания
+        let jitterMinutes = Int.random(in: -15...15)
+        let base = Calendar.current.date(
+            bySettingHour: settings.dailyHour,
+            minute: settings.dailyMinute,
+            second: 0,
+            of: .now
+        ) ?? .now
+        let scheduled = Calendar.current.date(byAdding: .minute, value: jitterMinutes, to: base) ?? base
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        // если время уже прошло сегодня — планируем на завтра
+        let triggerDate: Date
+        if scheduled <= .now {
+            triggerDate = Calendar.current.date(byAdding: .day, value: 1, to: scheduled) ?? scheduled
+        } else {
+            triggerDate = scheduled
+        }
+
+        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: triggerDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         let request = UNNotificationRequest(identifier: Self.dailyID, content: content, trigger: trigger)
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [Self.dailyID])
@@ -108,6 +124,12 @@ final class ReminderService: NSObject, UNUserNotificationCenterDelegate {
         if isDaily || isSnooze {
             await MainActor.run {
                 RunCoordinator.shared.pendingAutoRun = true
+            }
+            // перепланируем ежедневное напоминание на следующий день с новым дрожанием
+            if isDaily {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    self.scheduleDaily()
+                }
             }
         }
     }
