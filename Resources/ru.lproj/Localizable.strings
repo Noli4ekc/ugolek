@@ -1,0 +1,70 @@
+// Уголёк — Русская локализация
+"tab.home" = "Главная";
+"tab.friends" = "Друзья";
+"tab.history" = "История";
+"tab.settings" = "Настройки";
+
+"account.title" = "Аккаунт";
+"account.active" = "Сессия TikTok активна";
+"account.inactive" = "Требуется вход в TikTok";
+"account.login" = "Войти";
+"account.logout" = "Выйти";
+"account.checked" = "Проверено: %@";
+
+"today.title" = "Сегодня";
+"today.totalFriends" = "Всего друзей";
+"today.sentToday" = "Отправлено сегодня";
+
+"action.extend" = "Продлить сейчас";
+"action.diagnostics" = "Диагностика";
+
+"friends.title" = "Друзья";
+"friends.empty" = "Пока никого";
+"friends.empty.desc" = "Добавь друзей — и Уголёк будет продлевать с ними огоньки";
+"friends.search" = "Поиск";
+"friends.add" = "Добавить друга";
+"friends.export" = "Экспорт в JSON";
+"friends.import" = "Импорт из JSON";
+
+"history.title" = "История";
+"history.empty" = "История пуста";
+"history.empty.desc" = "После первого прогона здесь появится статистика";
+"history.summary" = "Сводка";
+"history.totalRuns" = "Всего прогонов";
+"history.successful" = "Успешных";
+"history.totalSent" = "Отправлено сообщений";
+"history.errors" = "Ошибок";
+"history.runs" = "Прогоны";
+"history.run" = "Прогон";
+"history.sent" = "Отправлено";
+"history.failed" = "Ошибки";
+"history.skipped" = "Пропущено";
+"history.duration" = "Длительность";
+"history.results" = "Результаты по друзьям";
+"history.log" = "Лог";
+"history.exportLog" = "Экспортировать лог";
+
+"settings.title" = "Настройки";
+"settings.message" = "Сообщение";
+"settings.messageText" = "Текст сообщения";
+"settings.messageFooter" = "Это сообщение Уголёк отправит каждому другу. Не слишком длинное — как обычное «пиши мне».";
+"settings.randomMessages" = "Случайные фразы";
+"settings.randomFooter" = "Уголёк берёт короткую фразу из пула (~30 вариантов) и отправляет разную каждому другу — без повторов подряд.";
+"settings.schedule" = "Расписание";
+"settings.reminderTime" = "Время напоминания";
+"settings.scheduleFooter" = "Каждый день в это время Уголёк пришлёт уведомление: тапнешь — и он продлит все огоньки.";
+"settings.behavior" = "Поведение";
+"settings.skipUnreachable" = "Пропускать недоступных";
+"settings.onlyWithFlame" = "Только тем, у кого есть огонёк";
+"settings.fastMode" = "Быстрый режим";
+"settings.behaviorFooter" = "Пропускать недоступных — если чат друга не нашёлся, прогон продолжится с остальными. «Только с огоньком» — письма уходят лишь друзьям с включённым флажком. Быстрый режим — короче паузы между друзьями.";
+"settings.automation" = "Автоматизация без тапа";
+"settings.version" = "Версия";
+"settings.privacy" = "Приватность";
+
+"status.sent" = "отправлено";
+"status.failed" = "ошибка";
+"status.skipped" = "пропущено";
+
+"alert.done" = "Готово";
+"alert.ok" = "Ок";

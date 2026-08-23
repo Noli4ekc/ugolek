@@ -1,0 +1,70 @@
+// Ugolek — English localization
+"tab.home" = "Home";
+"tab.friends" = "Friends";
+"tab.history" = "History";
+"tab.settings" = "Settings";
+
+"account.title" = "Account";
+"account.active" = "TikTok session active";
+"account.inactive" = "TikTok login required";
+"account.login" = "Log in";
+"account.logout" = "Log out";
+"account.checked" = "Checked: %@";
+
+"today.title" = "Today";
+"today.totalFriends" = "Total friends";
+"today.sentToday" = "Sent today";
+
+"action.extend" = "Extend now";
+"action.diagnostics" = "Diagnostics";
+
+"friends.title" = "Friends";
+"friends.empty" = "No one yet";
+"friends.empty.desc" = "Add friends — and Ugolek will keep streaks alive with them";
+"friends.search" = "Search";
+"friends.add" = "Add friend";
+"friends.export" = "Export to JSON";
+"friends.import" = "Import from JSON";
+
+"history.title" = "History";
+"history.empty" = "History is empty";
+"history.empty.desc" = "After the first run, statistics will appear here";
+"history.summary" = "Summary";
+"history.totalRuns" = "Total runs";
+"history.successful" = "Successful";
+"history.totalSent" = "Messages sent";
+"history.errors" = "Errors";
+"history.runs" = "Runs";
+"history.run" = "Run";
+"history.sent" = "Sent";
+"history.failed" = "Errors";
+"history.skipped" = "Skipped";
+"history.duration" = "Duration";
+"history.results" = "Results per friend";
+"history.log" = "Log";
+"history.exportLog" = "Export log";
+
+"settings.title" = "Settings";
+"settings.message" = "Message";
+"settings.messageText" = "Message text";
+"settings.messageFooter" = "This message will be sent to each friend. Keep it short — like a casual \"hey\".";
+"settings.randomMessages" = "Random phrases";
+"settings.randomFooter" = "Ugolek picks a short phrase from a pool (~30 options) and sends a different one to each friend — no consecutive repeats.";
+"settings.schedule" = "Schedule";
+"settings.reminderTime" = "Reminder time";
+"settings.scheduleFooter" = "Every day at this time Ugolek will send a notification: tap it and it will extend all streaks.";
+"settings.behavior" = "Behavior";
+"settings.skipUnreachable" = "Skip unreachable";
+"settings.onlyWithFlame" = "Only those with a flame";
+"settings.fastMode" = "Fast mode";
+"settings.behaviorFooter" = "Skip unreachable — if a friend's chat isn't found, the run continues with the rest. \"Only with flame\" — messages go only to friends with the flame flag on. Fast mode — shorter pauses between friends.";
+"settings.automation" = "Automation without tapping";
+"settings.version" = "Version";
+"settings.privacy" = "Privacy";
+
+"status.sent" = "sent";
+"status.failed" = "failed";
+"status.skipped" = "skipped";
+
+"alert.done" = "Done";
+"alert.ok" = "OK";

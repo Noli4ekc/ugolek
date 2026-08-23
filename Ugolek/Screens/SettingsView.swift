@@ -64,6 +64,11 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink {
+                        PrivacyView()
+                    } label: {
+                        Label("Приватность", systemImage: "lock.shield")
+                    }
                     LabeledContent("Версия", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
                 }
             }
