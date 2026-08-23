@@ -193,6 +193,9 @@ final class InboxRunner: NSObject {
 
         let webView = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: configuration)
         webView.customUserAgent = SessionStore.desktopUserAgent
+        // инспектируемость: позволяет подключиться к WKWebView через Web Inspector
+        // (Настройки iPhone → Safari → Дополнения → Web Inspector + USB) для живой отладки
+        webView.isInspectable = true
         webView.navigationDelegate = self
         window.addSubview(webView)
         window.layoutIfNeeded()
