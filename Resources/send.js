@@ -8,8 +8,8 @@
     insertMs: 500,
     sendScanMs: 500,
     clickWaitMs: 1500,
-    scrollStepMs: 2000,
-    scrollMaxSteps: 40,
+    scrollStepMs: 1200,
+    scrollMaxSteps: 60,
     sendConfirmMs: 1000,
     verifyPolls: 3,
     verifyPollMs: 1200,
@@ -132,8 +132,15 @@
   }
 
   function nudgeScroll(target, delta) {
-    target.scrollTop += delta;
+    // плавный скролл малыми шагами — виртуализированный список TikTok
+    // не успевает рендерить элементы при больших прыжках
+    const step = Math.min(delta, target.clientHeight * 0.7);
+    target.scrollTop += step;
     target.dispatchEvent(new Event('scroll', { bubbles: true }));
+    // дополнительно: wheel-событие, как от реальной мыши
+    target.dispatchEvent(new WheelEvent('wheel', {
+      deltaY: step, bubbles: true, cancelable: true
+    }));
   }
 
   function nicknameOfItem(item) {
@@ -192,18 +199,24 @@
       }
 
       const before = target.scrollTop;
-      nudgeScroll(target, target.clientHeight ? target.clientHeight * 2 : 600);
+      nudgeScroll(target, target.clientHeight ? target.clientHeight * 0.7 : 400);
       await sleep(CFG.scrollStepMs);
 
+      // всегда пере-запрашиваем список: TikTok виртуализирует, элементы меняются
       const refreshed = chatList();
       if (refreshed) list = refreshed;
+      log('Скролл шаг ' + step + ': items=' + (list ? list.items.length : 0) + ' scrollTop=' + target.scrollTop);
 
       if (target.scrollTop === before) {
-        target.dispatchEvent(new WheelEvent('wheel', { deltaY: 800, bubbles: true, cancelable: true }));
+        // scrollTop не сдвинулся — возможно, виртуальный список держит свой скролл
+        // пробуем wheel + window.scrollBy как запасной путь
+        target.dispatchEvent(new WheelEvent('wheel', { deltaY: 600, bubbles: true, cancelable: true }));
         const winBefore = window.scrollY;
-        window.scrollBy(0, 800);
+        window.scrollBy(0, 600);
         await sleep(600);
-        if (window.scrollY === winBefore && step > 1) {
+        const refreshed2 = chatList();
+        if (refreshed2) list = refreshed2;
+        if (window.scrollY === winBefore && target.scrollTop === before && step > 2) {
           throw new Error('Пользователь не найден в списке чатов');
         }
       }
@@ -871,6 +884,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.21)');
+  log('Скрипт загружен и ждёт команд (m4.22)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();
