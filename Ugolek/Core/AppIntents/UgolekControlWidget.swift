@@ -2,8 +2,8 @@ import AppIntents
 
 // Кнопка «🔥 Продлить» в Пункте управления (Control Center), iOS 18+
 // Пользователь добавляет её через Настройки → Пункт управления → Уголёк
-// Условная компиляция: ControlWidget доступен только в Xcode 16+ (iOS 18 SDK)
-#if compiler(>=6.0)
+// SKIP_CONTROL_WIDGET: флаг компиляции для CI без iOS 18 SDK (передаётся через project.yml)
+#if !SKIP_CONTROL_WIDGET
 import WidgetKit
 
 @available(iOS 18.0, *)

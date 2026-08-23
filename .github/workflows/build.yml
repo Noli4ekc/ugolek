@@ -39,6 +39,7 @@ jobs:
             -configuration Debug \
             -derivedDataPath dd \
             CODE_SIGNING_ALLOWED=NO \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS="SKIP_CONTROL_WIDGET" \
             build -quiet 2>&1 | tee buildlog.txt
 
       - name: Annotate compile errors
