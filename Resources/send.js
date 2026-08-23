@@ -38,6 +38,37 @@
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  // жучки на падение панели: React-крэши летят в window.onerror / unhandledrejection / console.error
+  const jsErrors = [];
+  function trapErrors() {
+    window.addEventListener('error', function (e) {
+      jsErrors.push('err: ' + String(e.message || e.type).slice(0, 160));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      const reason = e.reason;
+      jsErrors.push('rej: ' + String((reason && (reason.stack || reason.message)) || reason).slice(0, 200));
+    });
+    const orig = console.error;
+    console.error = function () {
+      try {
+        const parts = Array.from(arguments).map(function (a) {
+          if (typeof a === 'string') return a;
+          if (a && a.stack) return String(a.stack).split('\n')[0];
+          if (a && a.message) return String(a.message);
+          try { return JSON.stringify(a); } catch (e) { return String(a); }
+        });
+        jsErrors.push('console: ' + parts.join(' | ').slice(0, 250));
+      } catch (e) {}
+      orig.apply(console, arguments);
+    };
+  }
+  trapErrors();
+
+  function errorsSummary() {
+    if (!jsErrors.length) return '';
+    return ' jsErrors=[' + jsErrors.slice(-6).join(' ;; ').slice(0, 700) + ']';
+  }
+
   function firstMatch(selectors) {
     for (const selector of selectors) {
       const found = document.querySelectorAll(selector);
@@ -472,6 +503,17 @@
     return false;
   }
 
+  function pasteEventInsert(editor, text) {
+    try {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', text);
+      editor.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   async function typeMessage(text) {
     const editor = visibleEditor();
     if (!editor) throw new Error('Не найдено поле ввода сообщения');
@@ -494,14 +536,17 @@
       setter.call(editor, text);
       editor.dispatchEvent(new Event('input', { bubbles: true }));
     } else {
-      // Draft.js слушает beforeinput — ввод через модель редактора, а не в обход неё
-      try {
-        editor.dispatchEvent(new InputEvent('beforeinput', {
-          inputType: 'insertText', data: text, bubbles: true, cancelable: true
-        }));
-      } catch (e) {}
+      // paste с DataTransfer — родной атомарный путь Draft.js; фолбэки: beforeinput, execCommand, React-onPaste
+      if (pasteEventInsert(editor, text)) await sleep(80);
+      if (!editorHasText(editor, text)) {
+        try {
+          editor.dispatchEvent(new InputEvent('beforeinput', {
+            inputType: 'insertText', data: text, bubbles: true, cancelable: true
+          }));
+        } catch (e) {}
+        await sleep(80);
+      }
     }
-    await sleep(80);
 
     if (!editorHasText(editor, text)) {
       document.execCommand('insertText', false, text);
@@ -517,7 +562,7 @@
       throw new Error('Текст не вставился в поле ввода');
     }
     log('Текст введён');
-    log('После ввода — ' + paneState() + ' hasFocus=' + document.hasFocus());
+    log('После ввода — ' + paneState() + ' hasFocus=' + document.hasFocus() + errorsSummary());
   }
 
   function safeClick(el) {
@@ -538,6 +583,15 @@
         return;
       }
     }
+
+    // кнопка отправки появляется только когда в поле есть текст — ищем сразу, без паузы
+    const instant = findSendButton();
+    if (instant) {
+      safeClick(instant);
+      log('Отправка кнопкой (мгновенный поиск)');
+      return;
+    }
+
     await sleep(CFG.sendScanMs);
 
     for (const selector of ["[data-e2e*='send']", "[data-e2e*='Send']", "button[type='submit']"]) {
@@ -580,7 +634,8 @@
         + ' editables=' + document.querySelectorAll("[contenteditable='true']").length
         + ' vis=' + document.visibilityState
         + ' dm=[' + dmKeys + ']'
-        + ' кнопки=[' + buttons + ']';
+        + ' кнопки=[' + buttons + ']'
+        + errorsSummary();
       throw new Error('Поле ввода пропало перед отправкой (' + state + ')');
     }
     const keyOptions = {
@@ -767,9 +822,10 @@
       CFG.verifyPollMs = 700;
       CFG.pollMs = 200;
     }
-    const username = payload.username || '';
-    try {
-      log('Ищу чат: ' + username);
+        const username = payload.username || '';
+        try {
+          log('Прогон: hasFocus=' + document.hasFocus());
+          log('Ищу чат: ' + username);
       await findAndOpenChat(username, !!payload.isGroup);
 
       if (payload.dryRun) {
@@ -815,6 +871,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.20)');
+  log('Скрипт загружен и ждёт команд (m4.21)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();
