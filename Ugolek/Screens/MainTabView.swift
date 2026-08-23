@@ -14,6 +14,7 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label("Настройки", systemImage: "gearshape.fill") }
         }
+        .tint(.orange)
         .onAppear {
             ReminderService.shared.requestAndScheduleDaily()
             RunCoordinator.shared.consumePendingAutoRunIfNeeded()
