@@ -66,6 +66,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Select latest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Using: $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -80,6 +87,7 @@ jobs:
           -configuration Release
           -archivePath build/Ugolek.xcarchive
           CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS="SKIP_CONTROL_WIDGET"
           archive -quiet
 
       - name: Pack unsigned IPA
