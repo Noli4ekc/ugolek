@@ -121,11 +121,26 @@
   }
 
   function scrollTargetFor() {
+    // TikTok DM: настоящий скролл-контейнер — безымянный div ВНУТРИ drawer
+    // (не предок списка! у списка overflow=visible, scrollHeight=clientHeight)
+    // Ищем: overflowY=auto/scroll И scrollHeight > clientHeight
+    const drawer = document.querySelector('[class*="DivDrawerCont"]')
+      || document.querySelector('[class*="MessageDra"]');
+    if (drawer) {
+      const all = drawer.querySelectorAll('*');
+      for (const el of all) {
+        const style = getComputedStyle(el);
+        if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 10) {
+          return el;
+        }
+      }
+    }
+    // фолбэк: старый путь — от списка вверх
     const direct = document.querySelector("[data-e2e='dm-new-conversation-list']");
     let node = direct;
     for (let i = 0; node && i < 12 && node !== document.body; i++) {
       const style = getComputedStyle(node);
-      if (/(auto|scroll)/.test(style.overflowY)) return node;
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 10) return node;
       node = node.parentElement;
     }
     return document.scrollingElement || document.documentElement;
@@ -207,17 +222,23 @@
       if (refreshed) list = refreshed;
       log('Скролл шаг ' + step + ': items=' + (list ? list.items.length : 0) + ' scrollTop=' + target.scrollTop);
 
-      if (target.scrollTop === before) {
-        // scrollTop не сдвинулся — возможно, виртуальный список держит свой скролл
-        // пробуем wheel + window.scrollBy как запасной путь
-        target.dispatchEvent(new WheelEvent('wheel', { deltaY: 600, bubbles: true, cancelable: true }));
-        const winBefore = window.scrollY;
-        window.scrollBy(0, 600);
-        await sleep(600);
-        const refreshed2 = chatList();
-        if (refreshed2) list = refreshed2;
-        if (window.scrollY === winBefore && target.scrollTop === before && step > 2) {
-          throw new Error('Пользователь не найден в списке чатов');
+      // TikTok может ограничивать scrollTop — если упёрлись, пробуем
+      // scrollIntoView на последний видимый элемент, чтобы «дотолкнуть»
+      if (target.scrollTop === before || target.scrollTop >= target.scrollHeight - target.clientHeight - 5) {
+        const allItems = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
+        const lastItem = allItems[allItems.length - 1];
+        if (lastItem) {
+          try { lastItem.scrollIntoView({ block: 'end' }); } catch (e) {}
+          await sleep(800);
+          const refreshed2 = chatList();
+          if (refreshed2) list = refreshed2;
+        }
+        if (target.scrollTop === before) {
+          target.dispatchEvent(new WheelEvent('wheel', { deltaY: 600, bubbles: true, cancelable: true }));
+          await sleep(600);
+          if (target.scrollTop === before && step > 2) {
+            throw new Error('Пользователь не найден в списке чатов (скролл упёрся, всего ' + allItems.length + ' чатов)');
+          }
         }
       }
     }
@@ -884,6 +905,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.22)');
+  log('Скрипт загружен и ждёт команд (m4.23)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();
