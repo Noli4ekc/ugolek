@@ -29,6 +29,29 @@ final class AppStore {
         persist(.friends)
     }
 
+    func exportFriendsJSON() -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(friends),
+              let json = String(data: data, encoding: .utf8) else { return "[]" }
+        return json
+    }
+
+    func importFriendsJSON(_ json: String) -> Int {
+        guard let data = json.data(using: .utf8),
+              let imported = try? JSONDecoder().decode([Friend].self, from: data) else { return 0 }
+        let existingHandles = Set(friends.map { $0.handle.lowercased() })
+        var added = 0
+        for friend in imported {
+            if !existingHandles.contains(friend.handle.lowercased()) {
+                friends.append(friend)
+                added += 1
+            }
+        }
+        if added > 0 { persist(.friends) }
+        return added
+    }
+
     var friendsDueToday: [Friend] {
         let today = Day.today()
         return friends.filter { friend in

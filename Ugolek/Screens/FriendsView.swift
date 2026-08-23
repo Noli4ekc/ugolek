@@ -1,10 +1,14 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FriendsView: View {
     @State private var store = AppStore.shared
     @State private var search = ""
     @State private var editing: Friend?
     @State private var showingAdd = false
+    @State private var showExportSheet = false
+    @State private var showImportPicker = false
+    @State private var importMessage: String?
 
     private var visible: [Friend] {
         let q = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -37,10 +41,24 @@ struct FriendsView: View {
             .navigationTitle("Друзья")
             .searchable(text: $search, prompt: "Поиск")
             .toolbar {
-                Button {
-                    showingAdd = true
+                Menu {
+                    Button {
+                        showingAdd = true
+                    } label: {
+                        Label("Добавить друга", systemImage: "plus")
+                    }
+                    Button {
+                        showExportSheet = true
+                    } label: {
+                        Label("Экспорт в JSON", systemImage: "square.and.arrow.up")
+                    }
+                    Button {
+                        showImportPicker = true
+                    } label: {
+                        Label("Импорт из JSON", systemImage: "square.and.arrow.down")
+                    }
                 } label: {
-                    Image(systemName: "plus")
+                    Image(systemName: "plus.circle")
                 }
             }
             .sheet(isPresented: $showingAdd) {
@@ -48,6 +66,35 @@ struct FriendsView: View {
             }
             .sheet(item: $editing) { friend in
                 FriendEditor(friend: friend)
+            }
+            .sheet(isPresented: $showExportSheet) {
+                ShareSheet(items: [store.exportFriendsJSON()])
+            }
+            .fileImporter(
+                isPresented: $showImportPicker,
+                allowedContentTypes: [.json, .plainText]
+            ) { result in
+                switch result {
+                case .success(let url):
+                    guard url.startAccessingSecurityScopedResource(),
+                          let json = try? String(contentsOf: url, encoding: .utf8) else {
+                        importMessage = "Не удалось прочитать файл"
+                        return
+                    }
+                    url.stopAccessingSecurityScopedResource()
+                    let added = store.importFriendsJSON(json)
+                    importMessage = added > 0 ? "Добавлено друзей: \(added)" : "Новых друзей не найдено"
+                case .failure:
+                    importMessage = "Ошибка импорта"
+                }
+            }
+            .alert("Импорт", isPresented: Binding(
+                get: { importMessage != nil },
+                set: { if !$0 { importMessage = nil } }
+            )) {
+                Button("Ок", role: .cancel) {}
+            } message: {
+                Text(importMessage ?? "")
             }
         }
     }
