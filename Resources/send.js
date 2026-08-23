@@ -101,13 +101,21 @@
     return match ? match[1].toLowerCase() : null;
   }
 
-  // частичное совпадение: никнейм "нн" может быть отображением пользователя @nnnnll67nl
-  // проверяем: wanted начинается с ника ИЛИ ник является началом wanted
+  // частичное совпадение: никнейм "нн" (кириллица) может быть отображением @nnnnll67nl (латиница)
+  // нормализуем раскладку: кириллические буквы → латинские эквиваленты
+  const LAYOUT_MAP = { 'а':'a','в':'b','е':'e','к':'k','м':'m','н':'n','о':'o','р':'p','с':'c','т':'t','у':'y','х':'x' };
+  function normalizeLayout(s) {
+    let out = '';
+    for (const ch of s.toLowerCase()) out += LAYOUT_MAP[ch] || ch;
+    return out;
+  }
+
   function fuzzyMatch(wanted, candidate) {
     if (!candidate) return false;
-    const c = candidate.toLowerCase();
-    return c === wanted
-      || (wanted.length >= 2 && c.length >= 2 && (wanted.startsWith(c) || c.startsWith(wanted)));
+    const c = normalizeLayout(candidate);
+    const w = normalizeLayout(wanted);
+    return c === w
+      || (w.length >= 2 && c.length >= 2 && (w.startsWith(c) || c.startsWith(w)));
   }
 
   function waitFor(test, timeoutMs, pollMs) {
@@ -919,6 +927,6 @@
   }
 
   window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
-  log('Скрипт загружен и ждёт команд (m4.24)');
+  log('Скрипт загружен и ждёт команд (m4.25)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();
