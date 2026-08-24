@@ -73,17 +73,19 @@ jobs:
           FW="$SDK/System/Library/Frameworks"
           echo "::notice::frameworks: ${FW:-MISSING}"
           set +e
-          for F in SwiftUI WidgetKit; do
-            DIR="$FW/$F.framework/Modules/$F.swiftmodule"
-            echo "::notice::[$F] dir: $([ -d "$DIR" ] && echo yes || echo no)"
-            for I in "$DIR"/*.swiftinterface; do
-              [ -f "$I" ] || continue
-              echo "::notice::[$F] iface: $(basename "$I")"
-              grep -ohE '(protocol|struct) [A-Za-z0-9_]*Control[A-Za-z0-9_]*' "$I" \
-                | sort -u | head -40 | while read -r LINE; do
-                echo "::notice::[$F] $LINE"
-              done
-            done
+          SI="$FW/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64-apple-ios.swiftinterface"
+          echo "::notice::SwiftUI iface exists: $([ -f "$SI" ] && echo yes || echo no)"
+          echo "--- all ControlWidget-related identifiers ---"
+          grep -oE '[A-Za-z0-9_]*ControlWidget[A-Za-z0-9_]*' "$SI" | sort -u | while read -r L; do
+            echo "::notice::id: $L"
+          done
+          echo "--- protocol ControlWidget full declaration ---"
+          awk '/^public protocol ControlWidget /,/^}/' "$SI" | head -60 | while read -r L; do
+            echo "::notice::decl: $L"
+          done
+          echo "--- WidgetKit swiftinterfaces ---"
+          find "$FW/WidgetKit.framework" -name "*.swiftinterface" 2>/dev/null | while read -r W; do
+            echo "::notice::wk: ${W#$FW/}"
           done
           exit 0
 
