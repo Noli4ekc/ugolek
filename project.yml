@@ -57,10 +57,6 @@ targets:
         TARGETED_DEVICE_FAMILY[config=Debug]: "1,2"
     dependencies:
       - target: Ugolek
-    info:
-      properties:
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   Ugolek:
     build:
