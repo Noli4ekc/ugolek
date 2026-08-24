@@ -49,7 +49,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ugolek.app.widget
         CODE_SIGN_STYLE: Manual
         CODE_SIGNING_ALLOWED: "NO"
-        INFOPLIST_FILE: Ugolek/WidgetExtension/Info.plist
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/Frameworks"
           - "@executable_path/../../Frameworks"
@@ -59,7 +58,6 @@ targets:
     dependencies:
       - target: Ugolek
     info:
-      path: Ugolek/WidgetExtension/Info.plist
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
