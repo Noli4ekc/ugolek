@@ -8,7 +8,9 @@ struct MaintainStreaksIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        #if !WIDGET_EXTENSION
         RunCoordinator.shared.start()
+        #endif
         return .result()
     }
 }

@@ -19,6 +19,8 @@ targets:
     platform: iOS
     sources:
       - path: Ugolek
+        excludes:
+          - "**/UgolekControlWidget.swift"
       - path: Resources
         buildPhase: resources
     info:
@@ -36,13 +38,38 @@ targets:
           - processing
         BGTaskSchedulerPermittedIdentifiers:
           - com.ugolek.app.catchup
+  UgolekWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Ugolek/Core/AppIntents/UgolekControlWidget.swift
+      - path: Ugolek/Core/AppIntents/MaintainStreaksIntent.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ugolek.app.widget
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: "NO"
+        INFOPLIST_FILE: Ugolek/WidgetExtension/Info.plist
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/Frameworks"
+          - "@executable_path/../../Frameworks"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: WIDGET_EXTENSION
+        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY[config=Debug]: "1,2"
+    dependencies:
+      - target: Ugolek
+    info:
+      path: Ugolek/WidgetExtension/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   Ugolek:
     build:
       targets:
         Ugolek: all
+        UgolekWidget: all
     run:
       config: Debug
     archive:
       config: Release
-
