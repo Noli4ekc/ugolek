@@ -69,7 +69,8 @@ jobs:
           else
             echo "::error::RESULT26: $OUT26"
           fi
-          FW="$(xcrun --sdk iphoneos --show-sdk-frameworks-path 2>/dev/null || true)"
+          SDK="$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
+          FW="$SDK/System/Library/Frameworks"
           echo "::notice::frameworks: ${FW:-MISSING}"
           set +e
           for F in SwiftUI WidgetKit; do
