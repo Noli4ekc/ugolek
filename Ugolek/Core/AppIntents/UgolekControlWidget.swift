@@ -1,8 +1,5 @@
 import AppIntents
-#if !targetEnvironment(simulator)
-// Control Center controls don't exist in the Simulator runtime — the types
-// only resolve in device builds. Guard keeps the simulator compile-check green.
-import WidgetKit
+import SwiftUI
 
 @available(iOS 18.0, *)
 struct UgolekControlWidget: ControlWidget {
@@ -18,4 +15,3 @@ struct UgolekControlWidget: ControlWidget {
         .description("Запустить рассылку сообщений друзьям в TikTok")
     }
 }
-#endif

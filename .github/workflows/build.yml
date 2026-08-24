@@ -35,7 +35,7 @@ jobs:
           echo "::notice::iphoneos sdk: $(xcrun --sdk iphoneos --show-sdk-version 2>&1)"
           cat > /tmp/cwtest.swift <<'EOF'
           import AppIntents
-          import WidgetKit
+          import SwiftUI
           @available(iOS 18.0, *)
           struct CWTestIntent: AppIntent {
               static var title: LocalizedStringResource = "t"
