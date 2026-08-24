@@ -80,22 +80,41 @@ jobs:
               -module-name "$M" -output-dir "/tmp/sg/$M" >/dev/null 2>&1
           done
           python3 - <<'PY' || true
-import json, glob
-for f in sorted(glob.glob('/tmp/sg/*/*.symbols.json')):
-    mod = f.split('/')[-2]
-    try:
-        d = json.load(open(f))
-    except Exception as e:
-        print(f'::error::{mod}: {e}')
-        continue
-    seen = set()
-    for s in d.get('symbols', []):
-        title = (s.get('names') or {}).get('title', '')
-        if 'Control' in title and title not in seen:
-            seen.add(title)
-            print(f'::notice::[{mod}] {s.get("kind",{}).get("displayName","?")}: {title}')
-PY
-          exit 0
+          import json, glob
+          lines = []
+          for f in sorted(glob.glob('/tmp/sg/*/*.symbols.json')):
+              mod = f.split('/')[-2]
+              try:
+                  d = json.load(open(f))
+              except Exception as e:
+                  print(f'::error::{mod}: {e}')
+                  continue
+              if not d.get('symbols'):
+                  lines.append(f'[{mod}] EMPTY OR MISSING')
+                  continue
+              seen = set()
+              for s in d.get('symbols', []):
+                  title = (s.get('names') or {}).get('title', '')
+                  if 'Control' in title and title not in seen:
+                      seen.add(title)
+                      row = '[%s] %s: %s' % (mod, s.get("kind",{}).get("displayName","?"), title)
+                      lines.append(row)
+                      print(f'::notice::{row}')
+          with open('control_symbols.txt', 'w') as fh:
+              fh.write('\n'.join(lines) + '\n')
+          print(f'::notice::wrote control_symbols.txt rows={len(lines)}')
+          PY
+      - name: Upload symbol inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-symbols
+          path: control_symbols.txt
+          if-no-files-found: ignore
+          retention-days: 5
+
+      - name: Never-fail marker
+        if: always()
+        run: exit 0
 
       - name: Install XcodeGen
         run: brew install xcodegen
