@@ -59,6 +59,16 @@ jobs:
           else
             echo "::error::RESULT: $OUT"
           fi
+          X26=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "::notice::testing with $X26"
+          OUT26=$(DEVELOPER_DIR="$X26/Contents/Developer" swiftc \
+            -sdk "$(DEVELOPER_DIR="$X26/Contents/Developer" xcrun --sdk iphoneos --show-sdk-path)" \
+            -target arm64-apple-ios26.0 -typecheck /tmp/cwtest.swift 2>&1 | head -4)
+          if [ -z "$OUT26" ]; then
+            echo "::notice::RESULT26: ControlWidget resolves against Xcode 26 SDK"
+          else
+            echo "::error::RESULT26: $OUT26"
+          fi
 
       - name: Install XcodeGen
         run: brew install xcodegen
