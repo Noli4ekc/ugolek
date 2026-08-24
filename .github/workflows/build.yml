@@ -69,16 +69,22 @@ jobs:
           else
             echo "::error::RESULT26: $OUT26"
           fi
-          FW=$(xcrun --sdk iphoneos --show-sdk-frameworks-path)
+          FW="$(xcrun --sdk iphoneos --show-sdk-frameworks-path 2>/dev/null || true)"
+          echo "::notice::frameworks: ${FW:-MISSING}"
+          set +e
           for F in SwiftUI WidgetKit; do
-            I=$(ls "$FW/$F.framework/Modules/$F.swiftmodule/"*.swiftinterface 2>/dev/null | head -1)
-            echo "::notice::[$F] interface: $(basename "${I:-none}")"
-            if [ -n "$I" ]; then
+            DIR="$FW/$F.framework/Modules/$F.swiftmodule"
+            echo "::notice::[$F] dir: $([ -d "$DIR" ] && echo yes || echo no)"
+            for I in "$DIR"/*.swiftinterface; do
+              [ -f "$I" ] || continue
+              echo "::notice::[$F] iface: $(basename "$I")"
               grep -ohE '(protocol|struct) [A-Za-z0-9_]*Control[A-Za-z0-9_]*' "$I" \
-                | sort -u | head -40 \
-                | awk -v f="$F" '{print "::notice::["f"] "$0}'
-            fi
+                | sort -u | head -40 | while read -r LINE; do
+                echo "::notice::[$F] $LINE"
+              done
+            done
           done
+          exit 0
 
       - name: Install XcodeGen
         run: brew install xcodegen
