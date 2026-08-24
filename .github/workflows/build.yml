@@ -27,6 +27,39 @@ jobs:
           xcrun simctl list runtimes
           xcrun simctl list devices available | head -30
 
+      - name: Diagnose ControlWidget availability
+        run: |
+          echo "::notice::selected: $(xcode-select -p)"
+          echo "::notice::xcodebuild: $(xcodebuild -version | tr '\n' ' ')"
+          echo "::notice::installed: $(ls /Applications | grep -i '^Xcode' | tr '\n' ' ')"
+          echo "::notice::iphoneos sdk: $(xcrun --sdk iphoneos --show-sdk-version 2>&1)"
+          cat > /tmp/cwtest.swift <<'EOF'
+          import AppIntents
+          import WidgetKit
+          @available(iOS 18.0, *)
+          struct CWTestIntent: AppIntent {
+              static var title: LocalizedStringResource = "t"
+              func perform() async throws -> some IntentResult { .result() }
+          }
+          @available(iOS 18.0, *)
+          struct CWTest: ControlWidget {
+              var body: some ControlWidgetConfiguration {
+                  StaticControlConfiguration(kind: "diag.cw") {
+                      ControlWidgetButton(action: CWTestIntent()) {
+                          Label("t", systemImage: "flame.fill")
+                      }
+                  }
+              }
+          }
+          EOF
+          OUT=$(swiftc -sdk "$(xcrun --sdk iphoneos --show-sdk-path)" \
+            -target arm64-apple-ios18.0 -typecheck /tmp/cwtest.swift 2>&1 | head -4)
+          if [ -z "$OUT" ]; then
+            echo "::notice::RESULT: ControlWidget resolves against device SDK"
+          else
+            echo "::error::RESULT: $OUT"
+          fi
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
