@@ -74,36 +74,18 @@ jobs:
           echo "::notice::frameworks: ${FW:-MISSING}"
           set +e
           SDKP="$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
-          mkdir -p /tmp/sg
-          for M in WidgetKit SwiftUI; do
-            xcrun swift-symbolgraph-extract -sdk "$SDKP" -target arm64-apple-ios18.0 \
-              -module-name "$M" -output-dir "/tmp/sg/$M" >/dev/null 2>&1
+          FW="$SDKP/System/Library/Frameworks"
+          : > control_symbols.txt
+          for MOD in WidgetKit SwiftUI; do
+            BIN="$FW/$MOD.framework/$MOD"
+            echo "::notice::$MOD binary: $([ -f "$BIN" ] && echo yes || echo no)"
+            nm -gU "$BIN" 2>/dev/null | awk '{print $3}' | grep '\$s' \
+              | xcrun swift-demangle 2>/dev/null \
+              | grep -oE "$MOD\.[A-Z][A-Za-z0-9_]*Control[A-Za-z0-9_]*" \
+              | sort -u >> control_symbols.txt
           done
-          python3 - <<'PY' || true
-          import json, glob
-          lines = []
-          for f in sorted(glob.glob('/tmp/sg/*/*.symbols.json')):
-              mod = f.split('/')[-2]
-              try:
-                  d = json.load(open(f))
-              except Exception as e:
-                  print(f'::error::{mod}: {e}')
-                  continue
-              if not d.get('symbols'):
-                  lines.append(f'[{mod}] EMPTY OR MISSING')
-                  continue
-              seen = set()
-              for s in d.get('symbols', []):
-                  title = (s.get('names') or {}).get('title', '')
-                  if 'Control' in title and title not in seen:
-                      seen.add(title)
-                      row = '[%s] %s: %s' % (mod, s.get("kind",{}).get("displayName","?"), title)
-                      lines.append(row)
-                      print(f'::notice::{row}')
-          with open('control_symbols.txt', 'w') as fh:
-              fh.write('\n'.join(lines) + '\n')
-          print(f'::notice::wrote control_symbols.txt rows={len(lines)}')
-          PY
+          echo "::notice::total unique: $(wc -l < control_symbols.txt)"
+          while read -r L; do echo "::notice::$L"; done < <(head -60 control_symbols.txt)
       - name: Upload symbol inventory
         uses: actions/upload-artifact@v4
         with:
