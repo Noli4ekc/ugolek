@@ -73,20 +73,28 @@ jobs:
           FW="$SDK/System/Library/Frameworks"
           echo "::notice::frameworks: ${FW:-MISSING}"
           set +e
-          SI="$FW/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64-apple-ios.swiftinterface"
-          echo "::notice::SwiftUI iface exists: $([ -f "$SI" ] && echo yes || echo no)"
-          echo "--- all ControlWidget-related identifiers ---"
-          grep -oE '[A-Za-z0-9_]*ControlWidget[A-Za-z0-9_]*' "$SI" | sort -u | while read -r L; do
-            echo "::notice::id: $L"
+          SDKP="$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
+          mkdir -p /tmp/sg
+          for M in WidgetKit SwiftUI; do
+            xcrun swift-symbolgraph-extract -sdk "$SDKP" -target arm64-apple-ios18.0 \
+              -module-name "$M" -output-dir "/tmp/sg/$M" >/dev/null 2>&1
           done
-          echo "--- protocol ControlWidget full declaration ---"
-          awk '/^public protocol ControlWidget /,/^}/' "$SI" | head -60 | while read -r L; do
-            echo "::notice::decl: $L"
-          done
-          echo "--- WidgetKit swiftinterfaces ---"
-          find "$FW/WidgetKit.framework" -name "*.swiftinterface" 2>/dev/null | while read -r W; do
-            echo "::notice::wk: ${W#$FW/}"
-          done
+          python3 - <<'PY' || true
+import json, glob
+for f in sorted(glob.glob('/tmp/sg/*/*.symbols.json')):
+    mod = f.split('/')[-2]
+    try:
+        d = json.load(open(f))
+    except Exception as e:
+        print(f'::error::{mod}: {e}')
+        continue
+    seen = set()
+    for s in d.get('symbols', []):
+        title = (s.get('names') or {}).get('title', '')
+        if 'Control' in title and title not in seen:
+            seen.add(title)
+            print(f'::notice::[{mod}] {s.get("kind",{}).get("displayName","?")}: {title}')
+PY
           exit 0
 
       - name: Install XcodeGen
