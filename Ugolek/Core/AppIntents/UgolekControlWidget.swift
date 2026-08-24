@@ -1,7 +1,9 @@
 import AppIntents
+#if !targetEnvironment(simulator)
+// Control Center controls don't exist in the Simulator runtime — the types
+// only resolve in device builds. Guard keeps the simulator compile-check green.
 import WidgetKit
 
-// ControlWidget — Control Center button, requires Widget Extension target.
 @available(iOS 18.0, *)
 struct UgolekControlWidget: ControlWidget {
     static let kind = "com.ugolek.streak-button"
@@ -16,3 +18,4 @@ struct UgolekControlWidget: ControlWidget {
         .description("Запустить рассылку сообщений друзьям в TikTok")
     }
 }
+#endif
