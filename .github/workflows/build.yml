@@ -81,14 +81,20 @@ jobs:
         run: xcodegen generate
 
       - name: Archive (device, release, unsigned)
-        run: >
-          xcodebuild -project Ugolek.xcodeproj
-          -scheme Ugolek
-          -destination 'generic/platform=iOS'
-          -configuration Release
-          -archivePath build/Ugolek.xcarchive
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-          archive -quiet
+        run: |
+          set -o pipefail
+          xcodebuild -project Ugolek.xcodeproj \
+            -scheme Ugolek \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            -archivePath build/Ugolek.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            archive 2>&1 | tee buildlog.txt
+
+      - name: Annotate archive errors
+        if: failure()
+        run: |
+          grep -E "error:" buildlog.txt | head -40 | sed 's/^/::error::/' || true
 
       - name: Pack unsigned IPA
         run: |
