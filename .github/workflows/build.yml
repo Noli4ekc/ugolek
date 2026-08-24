@@ -75,6 +75,10 @@ jobs:
           set +e
           SDKP="$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || true)"
           FW="$SDKP/System/Library/Frameworks"
+          echo "::notice::SDKP=$SDKP"
+          echo "::notice::FW exists: $([ -d "$FW" ] && echo yes || echo no)"
+          ls "$FW" 2>/dev/null | head -8 | while read -r L; do echo "::notice::fw-dir: $L"; done
+          ls "$FW/WidgetKit.framework" 2>/dev/null | while read -r L; do echo "::notice::wk-entry: $L"; done
           : > control_symbols.txt
           for MOD in WidgetKit SwiftUI; do
             BIN="$FW/$MOD.framework/$MOD"
