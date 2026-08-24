@@ -23,6 +23,8 @@ targets:
           - "**/UgolekControlWidget.swift"
       - path: Resources
         buildPhase: resources
+    dependencies:
+      - target: UgolekWidget
     info:
       path: Ugolek/Info.plist
       properties:
@@ -47,16 +49,15 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ugolek.app.widget
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGNING_ALLOWED: "NO"
-        LD_RUNPATH_SEARCH_PATHS:
-          - "@executable_path/Frameworks"
-          - "@executable_path/../../Frameworks"
+        IPHONEOS_DEPLOYMENT_TARGET: 18.0
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: WIDGET_EXTENSION
         TARGETED_DEVICE_FAMILY: "1"
-        TARGETED_DEVICE_FAMILY[config=Debug]: "1,2"
-    dependencies:
-      - target: Ugolek
+    info:
+      path: UgolekWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Уголёк
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 schemes:
   Ugolek:
     build:

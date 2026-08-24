@@ -15,6 +15,7 @@ struct MaintainStreaksIntent: AppIntent {
     }
 }
 
+#if !WIDGET_EXTENSION
 struct UgolekShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -25,3 +26,4 @@ struct UgolekShortcuts: AppShortcutsProvider {
         )
     }
 }
+#endif
