@@ -24,6 +24,8 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks | grep -i ios
+          xcrun simctl list runtimes
+          xcrun simctl list devices available | head -30
 
       - name: Install XcodeGen
         run: brew install xcodegen
