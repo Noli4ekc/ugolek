@@ -68,3 +68,15 @@ iOS-приложение **«Уголёк» (Ugolek)** — автоматиче�
 
 ## Как быстро восстановиться в новой сессии
 Прочитать этот файл → `git -C D:/Ugolek log --oneline -15` → `task-master list` в `D:\Ugolek` → спросить пользователя про результат последнего теста m4.17.
+
+## Кнопка 🔥 в Пункте управления — как это реализовано на самом деле (2026-08-25)
+План `docs/control-center-plan.md` частично ошибался. Проверено CI-диагностикой и Apple-доками:
+
+1. **`ControlWidget` НЕ компилируется в main app target** — нужен отдельный **Widget Extension target** (`type: app-extension`). В `project.yml` это таргет `UgolekWidget` (bundle id `com.ugolek.app.widget`, deployment target iOS 18.0), главный таргет его встраивает (`dependencies: [target: UgolekWidget]`), схема собирает оба.
+2. **Нужны ОБА импорта: `import SwiftUI` + `import WidgetKit`.** Протоколы (`ControlWidget`, `ControlWidgetConfiguration`) живут в SwiftUI, структуры конфигурации (`StaticControlConfiguration(kind:content:)`, `ControlWidgetButton`) — в WidgetKit. Поодиночке импорты дают «cannot find type» (интерфейс WidgetKit не грузится без SwiftUI из-за `ControlWidgetTemplate`). Это была главная ловушка.
+3. `MaintainStreaksIntent.swift` общий для обоих таргетов; вызов `RunCoordinator.shared.start()` обёрнут в `#if !WIDGET_EXTENSION` (в расширении RunCoordinator нет). `UgolekShortcuts` тоже под `#if !WIDGET_EXTENSION`.
+4. `UgolekControlWidget.swift` исключён из sources главного таргета (`excludes:` в project.yml) и входит только в виджетный.
+5. CI: Xcode зафиксирован на **16.4** (`setup-xcode`, latest-stable нестабилен). Ручные Info.plist для расширения не создавать — XcodeGen генерит сам (путь указан через `info.path: UgolekWidget/Info.plist`; файл появится при `xcodegen generate`). Чужой plist внутри рекурсивного глоуба `path: Ugolek` даёт «Multiple commands produce Info.plist».
+6. Bundle ID приложения сменён авто → `com.ugolek.app` (`PRODUCT_BUNDLE_IDENTIFIER` в settings.base). При установке поверх старого iOS считает это другим приложением: **сначала удалить старый Уголёк** (куки TikTok в Keychain сотрутся — перелогин).
+
+Симуляторный compile-check собирает оба таргета успешно; device-archive кладёт `.appex` внутрь IPA (два bundle — Sideloadly должен ре-сайнить оба).
