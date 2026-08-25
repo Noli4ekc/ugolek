@@ -50,8 +50,6 @@ enum StreakEngine {
                 total: targets.count
             ))
 
-            let reply = await InboxRunner.shared.send(
-                to: friend.handle,
             let outgoingMessage = store.settings.useRandomMessages
                 ? MessagePool.random(excluding: lastRandomMessage)
                 : store.settings.messageText
