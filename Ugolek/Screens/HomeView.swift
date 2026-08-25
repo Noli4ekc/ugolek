@@ -133,6 +133,11 @@ struct HomeView: View {
     }
 
     private func runDiagnostics() {
+        // Диагностика гоняет тот же синглтон WebView, что и прогон, — не смешиваем
+        guard !coordinator.runActive else {
+            diagText = "Идёт прогон — диагностика недоступна. Попробуй после завершения."
+            return
+        }
         diagActive = true
         Task {
             var parts: [String] = []

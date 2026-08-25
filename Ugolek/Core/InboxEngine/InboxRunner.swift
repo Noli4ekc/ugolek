@@ -6,6 +6,7 @@ enum InboxError: LocalizedError {
     case loginRequired
     case loadTimeout
     case scriptMissing
+    case busy
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,7 @@ enum InboxError: LocalizedError {
         case .loginRequired: return "Сессия TikTok истекла — нужен повторный вход"
         case .loadTimeout: return "Страница сообщений TikTok не загрузилась"
         case .scriptMissing: return "Файл автоматизации не найден в сборке"
+        case .busy: return "Движок занят другим прогоном"
         }
     }
 }
@@ -40,8 +42,13 @@ final class InboxRunner: NSObject {
 
     var onLog: ((String) -> Void)?
 
+    /// Худший путь JS-отправки: скролл до 60×1200 мс × две попытки + перезагрузки страницы.
+    private static let sendTimeout: TimeInterval = 200
+
     func ensureLoaded() async throws {
         if webView != nil, loadedURL != nil { return }
+        // Второй одновременный загрузчик перезаписал бы continuation первого — тот завис бы навечно
+        guard loadContinuation == nil else { throw InboxError.busy }
 
         try await makeWindowAndWebView()
 
@@ -113,20 +120,24 @@ final class InboxRunner: NSObject {
     }
 
     private func runJS(_ json: String, handle: String) async -> BridgeMessage {
+        // Параллельный send перезаписал бы чужой continuation и подвесил бы его навечно
+        guard resultContinuation == nil else {
+            return BridgeMessage(type: "result", username: handle, ok: false, error: "Движок занят другим прогоном")
+        }
         runToken += 1
         let token = runToken
         return await withCheckedContinuation { cont in
             resultContinuation = cont
             webView?.evaluateJavaScript("Ugolek.run(\(json))", completionHandler: nil)
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(95))
+                try? await Task.sleep(for: .seconds(Self.sendTimeout))
                 guard let self, self.runToken == token, let pending = self.resultContinuation else { return }
                 self.resultContinuation = nil
                 pending.resume(returning: BridgeMessage(
                     type: "result",
                     username: handle,
                     ok: false,
-                    error: "Превышено время ожидания (95 с)"
+                    error: "Превышено время ожидания (\(Int(Self.sendTimeout)) с)"
                 ))
             }
         }

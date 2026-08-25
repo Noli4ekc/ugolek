@@ -74,6 +74,23 @@ final class RunCoordinator {
         return record
     }
 
+    /// Тестовый прогон без отправки (проверка «Гео всегда»). Уважает runActive.
+    @discardableResult
+    func startDryTest() async -> RunRecord {
+        guard !runActive else {
+            return RunRecord(date: .now, durationSeconds: 0, results: [
+                FriendResult(friendId: UUID(), handle: "—", status: .failed, detail: "Уже идёт другой прогон")
+            ])
+        }
+        runActive = true
+        LocationKeeper.shared.acquire()
+        defer {
+            LocationKeeper.shared.release()
+            runActive = false
+        }
+        return await StreakEngine.run(dryRun: true) { _ in }
+    }
+
     func consumePendingAutoRunIfNeeded() {
         guard pendingAutoRun else { return }
         pendingAutoRun = false

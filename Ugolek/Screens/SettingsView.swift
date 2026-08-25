@@ -143,7 +143,7 @@ struct SettingsView: View {
     private func runDryTest() async -> Bool {
         guard SessionStore.shared.isLoggedIn else { return false }
         guard !AppStore.shared.friendsDueToday.isEmpty else { return true }
-        let record = await StreakEngine.run(dryRun: true) { _ in }
+        let record = await RunCoordinator.shared.startDryTest()
         return record.sentCount > 0 || record.skippedCount > 0 || record.failedCount == 0
     }
 
