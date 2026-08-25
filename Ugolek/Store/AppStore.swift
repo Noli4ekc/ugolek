@@ -108,17 +108,23 @@ final class AppStore {
         try? data.write(to: baseURL.appendingPathComponent(file.rawValue), options: .atomic)
     }
 
-    private func loadAll() {
-        let decoder = JSONDecoder()
-        let friendsURL = baseURL.appendingPathComponent(StoreFile.friends.rawValue)
-        let settingsURL = baseURL.appendingPathComponent(StoreFile.settings.rawValue)
-        let runsURL = baseURL.appendingPathComponent(StoreFile.runs.rawValue)
+    /// Битый файл не затираем молча: уводим в карантин рядом с оригиналом,
+    /// чтобы данные можно было вытащить руками, а следующий persist начал с чистого листа.
+    private func loadJSON<T: Decodable>(_ type: T.Type, _ file: StoreFile) -> T? {
+        let url = baseURL.appendingPathComponent(file.rawValue)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        do {
+            return try JSONDecoder().decode(type, from: data)
+        } catch {
+            let backup = baseURL.appendingPathComponent("\(file.rawValue).corrupt-\(Int(Date().timeIntervalSince1970))")
+            try? FileManager.default.moveItem(at: url, to: backup)
+            return nil
+        }
+    }
 
-        if let d = try? Data(contentsOf: friendsURL),
-           let f = try? decoder.decode([Friend].self, from: d) { friends = f }
-        if let d = try? Data(contentsOf: settingsURL),
-           let s = try? decoder.decode(AppSettings.self, from: d) { settings = s }
-        if let d = try? Data(contentsOf: runsURL),
-           let r = try? decoder.decode([RunRecord].self, from: d) { runs = r }
+    private func loadAll() {
+        friends = loadJSON([Friend].self, .friends) ?? []
+        if let saved = loadJSON(AppSettings.self, .settings) { settings = saved }
+        runs = loadJSON([RunRecord].self, .runs) ?? []
     }
 }

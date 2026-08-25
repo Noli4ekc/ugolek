@@ -111,6 +111,7 @@ struct SettingsView: View {
                 let c = Calendar.current.dateComponents([.hour, .minute], from: date)
                 store.settings.dailyHour = c.hour ?? 10
                 store.settings.dailyMinute = c.minute ?? 0
+                ReminderService.shared.scheduleDaily(force: true)
                 AutoRunner.shared.reschedule()
             }
         )

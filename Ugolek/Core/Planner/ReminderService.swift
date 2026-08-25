@@ -28,7 +28,25 @@ final class ReminderService: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    func scheduleDaily() {
+    /// force = true только при явной смене времени пользователем; фоновые вызовы
+    /// (открытие приложения, тап по уведомлению) не должны сносить будущее напоминание:
+    /// иначе джиттер в окне [T−15;T) переносил бы сегодняшнее напоминание на завтра.
+    func scheduleDaily(force: Bool = false) {
+        if !force {
+            UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+                if let pending = requests.first(where: { $0.identifier == Self.dailyID }),
+                   let trigger = pending.trigger as? UNCalendarNotificationTrigger,
+                   let next = trigger.nextTriggerDate(), next > Date() {
+                    return // будущее напоминание уже висит — не трогаем
+                }
+                DispatchQueue.main.async { self.scheduleDailyInternal() }
+            }
+            return
+        }
+        scheduleDailyInternal()
+    }
+
+    private func scheduleDailyInternal() {
         let settings = AppStore.shared.settings
         let content = UNMutableNotificationContent()
         content.title = "Уголёк"
