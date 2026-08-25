@@ -39,6 +39,26 @@ final class RunCoordinator {
         }
     }
 
+    /// Фоновый прогон без UI (уровень 2). Историю пишет сам StreakEngine.
+    @discardableResult
+    func startHeadless() async -> RunRecord {
+        guard !runActive else { return RunRecord(date: .now, durationSeconds: 0, results: []) }
+        runActive = true
+        progressText = "Фоновое продление…"
+        LocationKeeper.shared.acquire()
+        defer {
+            LocationKeeper.shared.release()
+            runActive = false
+        }
+        let record = await StreakEngine.run { [weak self] update in
+            self?.progressText = update.text
+            self?.progressDone = update.done
+            self?.progressTotal = update.total
+        }
+        ReminderService.shared.refreshAfterRun(record)
+        return record
+    }
+
     func consumePendingAutoRunIfNeeded() {
         guard pendingAutoRun else { return }
         pendingAutoRun = false
