@@ -40,13 +40,15 @@ final class AppStore {
     func importFriendsJSON(_ json: String) -> Int {
         guard let data = json.data(using: .utf8),
               let imported = try? JSONDecoder().decode([Friend].self, from: data) else { return 0 }
-        let existingHandles = Set(friends.map { $0.handle.lowercased() })
+        var seen = Set(friends.map { $0.handle.lowercased() })
         var added = 0
         for friend in imported {
-            if !existingHandles.contains(friend.handle.lowercased()) {
-                friends.append(friend)
-                added += 1
-            }
+            let key = friend.handle.lowercased()
+            // дедуп и против уже существующих друзей, и против дублей внутри самого файла
+            if seen.contains(key) { continue }
+            seen.insert(key)
+            friends.append(friend)
+            added += 1
         }
         if added > 0 { persist(.friends) }
         return added
@@ -70,7 +72,9 @@ final class AppStore {
         runs.insert(run, at: 0)
         if runs.count > maxRuns { runs.removeLast(runs.count - maxRuns) }
 
-        let today = Day.today()
+        // день берём от СТАРТА прогона: рассылка, перешагнувшая полночь,
+        // не должна превращаться в «непродлённый» вчера-день
+        let today = Day.string(from: run.date)
         for result in run.results {
             guard let i = friends.firstIndex(where: { $0.id == result.friendId }) else { continue }
             switch result.status {

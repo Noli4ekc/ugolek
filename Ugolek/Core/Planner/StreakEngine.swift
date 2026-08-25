@@ -52,15 +52,19 @@ enum StreakEngine {
 
             let reply = await InboxRunner.shared.send(
                 to: friend.handle,
-                message: store.settings.useRandomMessages
-                    ? MessagePool.random(excluding: lastRandomMessage)
-                    : store.settings.messageText,
+            let outgoingMessage = store.settings.useRandomMessages
+                ? MessagePool.random(excluding: lastRandomMessage)
+                : store.settings.messageText
+            let reply = await InboxRunner.shared.send(
+                to: friend.handle,
+                message: outgoingMessage,
                 isGroup: friend.isGroup,
                 dryRun: dryRun,
                 fast: store.settings.fastMode
             )
-            if store.settings.useRandomMessages {
-                lastRandomMessage = reply.ok ?? false ? (store.settings.messageText) : lastRandomMessage
+            if store.settings.useRandomMessages, reply.ok ?? false {
+                // исключаем на следующем шаге именно отправленную фразу, а не дефолтный текст
+                lastRandomMessage = outgoingMessage
             }
             let ok = reply.ok ?? false
             let status: FriendSendStatus = ok ? .sent : (store.settings.skipUnreachable ? .skipped : .failed)
