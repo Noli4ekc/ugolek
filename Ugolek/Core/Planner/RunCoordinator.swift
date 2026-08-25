@@ -22,6 +22,7 @@ final class RunCoordinator {
         progressDone = 0
         progressTotal = 0
         UIApplication.shared.isIdleTimerDisabled = true
+        LocationKeeper.shared.acquire()
 
         Task {
             let record = await StreakEngine.run(forceAll: forceAll) { [weak self] update in
@@ -30,6 +31,7 @@ final class RunCoordinator {
                 self?.progressTotal = update.total
             }
             UIApplication.shared.isIdleTimerDisabled = false
+            LocationKeeper.shared.release()
             runActive = false
             lastSummary = record
             showSummary = !record.results.isEmpty

@@ -36,8 +36,11 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Уголёк использует геолокацию для фоновой защиты прогона рассылки — чтобы продление не обрывалось при сворачивании приложения. Координаты не собираются и не передаются."
+        NSLocationAlwaysUsageDescription: "Уголёк использует геолокацию для фоновой защиты прогона рассылки — чтобы продление не обрывалось при сворачивании приложения. Координаты не собираются и не передаются."
         UIBackgroundModes:
           - processing
+          - location
         BGTaskSchedulerPermittedIdentifiers:
           - com.ugolek.app.catchup
   UgolekWidget:
