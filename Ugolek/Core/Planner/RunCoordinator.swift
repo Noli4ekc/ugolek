@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import UIKit
+import UserNotifications
 
 @MainActor
 @Observable
@@ -16,14 +17,25 @@ final class RunCoordinator {
     var pendingAutoRun = false
 
     private init() {
-        // Разрешение на геолокацию забрали — авто-режим честно выключаем
+        // Разрешение на геолокацию забрали — авто-режим честно выключаем и сообщаем
         NotificationCenter.default.addObserver(
             forName: .geoPermissionRevoked, object: nil, queue: .main
         ) { _ in
             Task { @MainActor in
+                guard AppStore.shared.settings.geoAlwaysAuto else { return }
                 AppStore.shared.settings.geoAlwaysAuto = false
                 AutoRunner.shared.disarm()
                 LocationKeeper.shared.stopPersistent()
+
+                let content = UNMutableNotificationContent()
+                content.title = "Уголёк"
+                content.body = "Фоновый режим выключен: у Уголька больше нет доступа к геолокации"
+                let request = UNNotificationRequest(
+                    identifier: "ugolek.geoRevoked",
+                    content: content,
+                    trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+                )
+                UNUserNotificationCenter.current().add(request)
             }
         }
     }

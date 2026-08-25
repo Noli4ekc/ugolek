@@ -118,12 +118,17 @@ struct SettingsView: View {
     }
 
     // Включение «Гео всегда»: запрос разрешения + тестовый dry-run без отправки.
-    // Провал теста (нет логина/друзей) — тумблер отщёлкивается назад.
+    // Пока тест идёт, юзер может передумать: применяем результат, только если
+    // тумблер всё ещё включён — иначе поздний успех включил бы режим поверх OFF.
     private func handleGeoToggle(_ enabled: Bool) {
         if enabled {
             LocationKeeper.shared.requestAlways()
             Task {
                 let ok = await runDryTest()
+                guard store.settings.geoAlwaysAuto else {
+                    postNotice("Включение отменено — режим выключили во время проверки")
+                    return
+                }
                 if ok {
                     LocationKeeper.shared.startPersistent()
                     AutoRunner.shared.arm()

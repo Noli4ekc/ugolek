@@ -110,8 +110,14 @@ final class ReminderService: NSObject, UNUserNotificationCenterDelegate {
         let dueLeft = AppStore.shared.friendsDueToday
         if dueLeft.isEmpty {
             clearSnoozes()
-        } else if record.sentCount > 0 || record.failedCount > 0 {
+            return
+        }
+        let madeProgress = record.sentCount > 0 || record.failedCount > 0
+        if madeProgress {
             scheduleSnoozes()
+        } else if !record.results.isEmpty {
+            // прогон был, но все чаты оказались недостижимы — часовые снузы тут бессмысленны
+            clearSnoozes()
         }
     }
 
