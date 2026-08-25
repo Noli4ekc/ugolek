@@ -1,5 +1,6 @@
 import AppIntents
 import SwiftUI
+import WidgetKit
 
 @available(iOS 18.0, *)
 struct UgolekControlWidget: ControlWidget {

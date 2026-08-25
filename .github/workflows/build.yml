@@ -36,6 +36,7 @@ jobs:
           cat > /tmp/cwtest.swift <<'EOF'
           import AppIntents
           import SwiftUI
+          import WidgetKit
           @available(iOS 18.0, *)
           struct CWTestIntent: AppIntent {
               static var title: LocalizedStringResource = "t"
