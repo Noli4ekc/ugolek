@@ -11,6 +11,10 @@ final class LocationKeeper: NSObject, CLLocationManagerDelegate {
     private var acquireCount = 0
     private var persistent = false
     private var watchdog: Task<Void, Never>?
+    private var lastActivity = Date()
+
+    /// Разовая аренда гаснет, если прогресса не было дольше этого интервала.
+    static let staleInterval: TimeInterval = 900
 
     var permissionStatus: CLAuthorizationStatus {
         manager.authorizationStatus
@@ -37,6 +41,11 @@ final class LocationKeeper: NSObject, CLLocationManagerDelegate {
         acquireCount += 1
         startIfNeeded()
         resetWatchdog()
+    }
+
+    /// Отметка живости от движка: каждый шаг прогресса продлевает аренду.
+    func poke() {
+        lastActivity = Date()
     }
 
     func release() {
@@ -70,13 +79,21 @@ final class LocationKeeper: NSObject, CLLocationManagerDelegate {
         watchdog = nil
     }
 
-    // Сторож: разовая аренда не может висеть дольше 15 минут — значит прогон завис.
+    // Сторож: гасим разовую аренду, только если 15 минут не было прогресса —
+    // долгий, но живой прогон пикает poke() на каждом шаге и потому бессрочен.
     private func resetWatchdog() {
         watchdog?.cancel()
+        lastActivity = Date()
         watchdog = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(900))
-            guard !Task.isCancelled, let self else { return }
-            while self.acquireCount > 0 { self.release() }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, let self else { return }
+                if self.acquireCount == 0 { return }
+                if Date().timeIntervalSince(self.lastActivity) > Self.staleInterval {
+                    while self.acquireCount > 0 { self.release() }
+                    return
+                }
+            }
         }
     }
 

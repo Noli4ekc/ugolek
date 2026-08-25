@@ -39,6 +39,7 @@ final class RunCoordinator {
 
         Task {
             let record = await StreakEngine.run(forceAll: forceAll) { [weak self] update in
+                LocationKeeper.shared.poke()
                 self?.progressText = update.text
                 self?.progressDone = update.done
                 self?.progressTotal = update.total
@@ -64,6 +65,7 @@ final class RunCoordinator {
             runActive = false
         }
         let record = await StreakEngine.run { [weak self] update in
+            LocationKeeper.shared.poke()
             self?.progressText = update.text
             self?.progressDone = update.done
             self?.progressTotal = update.total
