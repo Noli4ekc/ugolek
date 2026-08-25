@@ -15,6 +15,19 @@ final class RunCoordinator {
     var showSummary = false
     var pendingAutoRun = false
 
+    private init() {
+        // Разрешение на геолокацию забрали — авто-режим честно выключаем
+        NotificationCenter.default.addObserver(
+            forName: .geoPermissionRevoked, object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in
+                AppStore.shared.settings.geoAlwaysAuto = false
+                AutoRunner.shared.disarm()
+                LocationKeeper.shared.stopPersistent()
+            }
+        }
+    }
+
     func start(forceAll: Bool = false) {
         guard !runActive else { return }
         runActive = true

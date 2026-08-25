@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct SettingsView: View {
     @State private var store = AppStore.shared
@@ -37,6 +38,26 @@ struct SettingsView: View {
                     Text("Расписание")
                 } footer: {
                     Text("Каждый день в это время Уголёк пришлёт уведомление: тапнешь — и он продлит все огоньки.")
+                }
+
+                Section {
+                    Toggle("Гео всегда (авто-продление)", isOn: $store.settings.geoAlwaysAuto)
+                        .onChange(of: store.settings.geoAlwaysAuto) { _, enabled in
+                            handleGeoToggle(enabled)
+                        }
+                    if store.settings.geoAlwaysAuto {
+                        if let next = AutoRunner.shared.nextRunDate {
+                            LabeledContent("Следующий прогон", value: next.formatted(date: .omitted, time: .shortened))
+                        }
+                        if LocationKeeper.shared.permissionStatus != .authorizedAlways {
+                            Text("Нужно разрешение «Всегда» на геолокацию — нажми тумблер ещё раз")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                } header: {
+                    Text("Фоновый режим")
+                } footer: {
+                    Text("Включён — Уголёк сам продлевает огоньки каждый день в выбранное время, не открываясь и не спрашивая. Держит геолокацию минимальной точности (вышки связи, не GPS) — батарея расходуется чуть быстрее, синяя стрелка видна в статус-баре. Перед включением прогонит проверку без отправки сообщений. После перезагрузки телефона открой Уголёк один раз.")
                 }
 
                 Section {
@@ -90,7 +111,52 @@ struct SettingsView: View {
                 let c = Calendar.current.dateComponents([.hour, .minute], from: date)
                 store.settings.dailyHour = c.hour ?? 10
                 store.settings.dailyMinute = c.minute ?? 0
+                AutoRunner.shared.reschedule()
             }
         )
+    }
+
+    // Включение «Гео всегда»: запрос разрешения + тестовый dry-run без отправки.
+    // Провал теста (нет логина/друзей) — тумблер отщёлкивается назад.
+    private func handleGeoToggle(_ enabled: Bool) {
+        if enabled {
+            LocationKeeper.shared.requestAlways()
+            Task {
+                let ok = await runDryTest()
+                if ok {
+                    LocationKeeper.shared.startPersistent()
+                    AutoRunner.shared.arm()
+                    postNotice("Фон готов: \(AppStore.shared.friendsDueToday.count) друзей ждут 🔥")
+                } else {
+                    store.settings.geoAlwaysAuto = false
+                    postNotice(SessionStore.shared.isLoggedIn
+                        ? "Тестовый прогон не прошёл — проверь связь и попробуй ещё раз"
+                        : "Нужен вход в TikTok — войди и включи фон заново")
+                }
+            }
+        } else {
+            AutoRunner.shared.disarm()
+            LocationKeeper.shared.stopPersistent()
+        }
+    }
+
+    private func runDryTest() async -> Bool {
+        guard SessionStore.shared.isLoggedIn else { return false }
+        guard !AppStore.shared.friendsDueToday.isEmpty else { return true }
+        let record = await StreakEngine.run(dryRun: true) { _ in }
+        return record.sentCount > 0 || record.skippedCount > 0 || record.failedCount == 0
+    }
+
+    private func postNotice(_ body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Уголёк"
+        content.body = body
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "ugolek.geoTest",
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 }
