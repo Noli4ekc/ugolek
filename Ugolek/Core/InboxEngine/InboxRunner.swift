@@ -30,6 +30,7 @@ final class InboxRunner: NSObject {
         var error: String? = nil
         var detail: String? = nil
         var text: String? = nil
+        var alreadyMaintained: Bool? = nil   // JS: стрик уже продлён сегодня — скип без отправки
     }
 
     private var window: UIWindow?

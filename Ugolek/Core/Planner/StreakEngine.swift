@@ -66,6 +66,18 @@ enum StreakEngine {
                 // исключаем на следующем шаге именно отправленную фразу, а не дефолтный текст
                 lastRandomMessage = outgoingMessage
             }
+
+            // Часть D: JS сверил юзернейм и увидел «сегодня уже писали оба» — пропускаем без отправки
+            if reply.alreadyMaintained == true {
+                if !dryRun { AppStore.shared.markStreakMaintainedToday(friend.id) }
+                results.append(FriendResult(
+                    friendId: friend.id,
+                    handle: friend.handle,
+                    status: .skipped,
+                    detail: "🔥 уже продлён сегодня"
+                ))
+                continue
+            }
             let ok = reply.ok ?? false
             let status: FriendSendStatus = ok ? .sent : (store.settings.skipUnreachable ? .skipped : .failed)
             results.append(FriendResult(

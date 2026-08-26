@@ -360,6 +360,42 @@
     return null; // не смогли — кандидат будет пропущен, вслепую не пишем
   }
 
+  // Границы «сегодня» определяются РАЗДЕЛИТЕЛЕМ ДАТ в треде («Сегодня»/«Вчера»/дата),
+  // а не регэкспами по тексту сообщений (PLAN-03/05): тексты вообще не анализируются.
+  // Возвращает { mine, theirs } или null — если границу не удалось увидеть
+  // (виртуализация отрендерила окно без разделителя) → вызывающий пишет как обычно.
+  function threadTodayFlags() {
+    const list = document.querySelector("[data-e2e='dm-new-message-list']");
+    if (!list) return null;
+    const nodes = Array.from(list.children);
+
+    let startIdx = -1;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const txt = (nodes[i].innerText || '').trim().toLowerCase();
+      if (!txt || txt.length > 24) continue;
+      if (txt === 'сегодня') { startIdx = i; break; }
+      if (txt === 'вчера'
+          || /^(пн|вт|ср|чт|пт|сб|вс)\b/.test(txt)
+          || /^\d{1,2}\s+(янв|фев|мар|апр|ма[йя]|июн|июл|авг|сен|окт|ноя|дек)\b/.test(txt)) {
+        return { mine: false, theirs: false };   // ближайшая граница старше — сегодня ничего нет
+      }
+    }
+    if (startIdx === -1) return null;
+
+    const listRect = list.getBoundingClientRect();
+    let mine = false, theirs = false;
+    for (let i = startIdx + 1; i < nodes.length; i++) {
+      const bubble = nodes[i].querySelector("[data-e2e='dm-new-message-text']");
+      if (!bubble) continue;
+      const r = bubble.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      // исходящие выровнены правее центра списка — геометрическая эвристика направления
+      const isMine = (r.left + r.width / 2) > listRect.left + listRect.width * 0.55;
+      if (isMine) mine = true; else theirs = true;
+    }
+    return { mine, theirs };
+  }
+
   // Открыть чат нужного друга с проверкой юзернейма по открытой панели.
   // Бросает «…не найден…» — такие ошибки НЕ повторяются второй попыткой.
   async function findAndOpenVerifiedChat(username, label, isGroup) {
@@ -387,6 +423,20 @@
         continue;                                      // панель переключится при открытии следующего
       }
       log('Юзернейм совпал: ' + actual);
+
+      // Часть D: стрик уже продлён сегодня? Смотрим границы «Сегодня» по разделителю дат.
+      const flags = threadTodayFlags();
+      if (flags) {
+        if (flags.mine && flags.theirs) {
+          log('🔥 Сегодня писали оба — стрик уже продлён, пропускаю без отправки');
+          return { ok: true, alreadyMaintained: true };
+        }
+        if (flags.mine && !flags.theirs) {
+          log('🔥 Последнее сегодня — моё, его реплики нет: повтор бесполезен, пропускаю');
+          return { ok: true, alreadyMaintained: true };
+        }
+        // только его сегодня / unknown → пишем: наш ответ спасает стрик
+      }
       return { ok: true };
     }
     throw new Error('Друг не найден: ни один кандидат не прошёл верификацию'
@@ -1016,7 +1066,16 @@
           log('Ищу чат: ' + username
             + (useVerify ? ' [верификация вкл]' : '')
             + (label ? ' (имя: ' + label + ')' : ''));
-      await openTarget();
+      const openedTarget = await openTarget();
+
+      // Часть D: JS сообщает «стрик уже продлён сегодня» — без отправки
+      if (openedTarget && openedTarget.alreadyMaintained) {
+        post({
+          type: 'result', username, ok: true, alreadyMaintained: true,
+          detail: '🔥 уже продлён сегодня',
+        });
+        return;
+      }
 
       if (payload.dryRun) {
         log('Пробный режим: чат открыт, отправка пропущена');
