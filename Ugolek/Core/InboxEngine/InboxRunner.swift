@@ -166,6 +166,20 @@ final class InboxRunner: NSObject {
         return "Диагностика не выполнена"
     }
 
+    /// Часть B фолбэк: ник из профиля через тот же залогиненный WebView —
+    /// same-origin fetch с куками и настоящим браузерным TLS, бот-фильтр не срабатывает.
+    func fetchProfileNickname(handle: String) async -> String? {
+        guard let webView else { return nil }
+        let safe = handle.filter { $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" }
+        guard safe == handle, !safe.isEmpty else { return nil }
+        let js = "Ugolek.profileNickname('\(safe)')"
+        guard let raw = try? await webView.evaluateJavaScript(js) as? String,
+              let data = raw.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              obj["found"] as? Bool == true else { return nil }
+        return obj["nickname"] as? String
+    }
+
     func chatProbe() async -> String {
         guard let webView else { return "Движок ещё не загружался" }
         _ = try? await webView.evaluateJavaScript("Ugolek.openFirstChat()")

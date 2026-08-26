@@ -1042,6 +1042,27 @@
     };
   }
 
+  // Часть B фолбэк: ник из профиля через same-origin fetch (куки + браузерный TLS).
+  // Возвращает JSON-строку {found:bool, nickname?:string, why?:string}.
+  async function profileNickname(handle) {
+    try {
+      const res = await fetch('/@' + encodeURIComponent(handle), { credentials: 'include' });
+      if (!res.ok) return JSON.stringify({ found: false, why: 'http' + res.status });
+      const t = await res.text();
+      const i = t.indexOf('"uniqueId":"' + handle.toLowerCase() + '"');
+      if (i < 0) return JSON.stringify({ found: false, why: 'no-uniqueId', size: t.length });
+      const seg = t.slice(Math.max(0, i - 300), i + 900);
+      const m = seg.match(/"nickname"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (!m) return JSON.stringify({ found: false, why: 'no-nickname-near' });
+      let nick = m[1]
+        .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+        .replace(/\\"/g, '"').replace(/\\\//g, '/');
+      return JSON.stringify({ found: true, nickname: nick });
+    } catch (e) {
+      return JSON.stringify({ found: false, why: String(e).slice(0, 80) });
+    }
+  }
+
   async function run(payload) {
     if (payload.fast) {
       CFG.settleMs = 1500;
@@ -1121,7 +1142,7 @@
     }
   }
 
-  window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot };
+  window.Ugolek = { log, discovery, run, openFirstChat, chatSnapshot, profileNickname };
   log('Скрипт загружен и ждёт команд (m4.25)');
   log('UA=' + (navigator.userAgent || '').slice(0, 90) + ' url=' + location.href + ' vis=' + document.visibilityState + ' hasFocus=' + document.hasFocus());
 })();

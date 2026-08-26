@@ -163,6 +163,7 @@ struct FriendEditor: View {
     // Часть C: автоопределение ника из публичного профиля (PLAN-10/14)
     enum NickState { case idle, checking, found, blocked, missing }
     @State private var nickState: NickState = .idle
+    @State private var nickDiag = ""
     @State private var nickTask: Task<Void, Never>?
     @State private var autoFilledLabel: String?
     @State private var appearedHandle: String?   // хендл на момент открытия — его не ре-фетчим
@@ -194,11 +195,21 @@ struct FriendEditor: View {
                         Label("Имя распознано: \(autoFilledLabel ?? "")", systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                     case .blocked:
-                        Label("Не удалось прочитать профиль — впиши имя руками", systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Не удалось прочитать профиль — впиши имя руками", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                            Text("diag: \(nickDiag)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     case .missing:
-                        Label("Страничка не найдена — проверь юзернейм", systemImage: "questionmark.circle")
-                            .foregroundStyle(.red)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Страничка не найдена — проверь юзернейм", systemImage: "questionmark.circle")
+                                .foregroundStyle(.red)
+                            Text("diag: \(nickDiag)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 } header: {
                     Text(isGroup ? "Группа" : "Друг")
@@ -272,12 +283,14 @@ struct FriendEditor: View {
                 if label.isEmpty || label == autoFilledLabel {
                     label = fresh
                 }
-            case .blocked:
+            case .blocked(let diag):
                 guard !Task.isCancelled else { return }
                 nickState = .blocked
-            case .missing:
+                nickDiag = diag
+            case .missing(let diag):
                 guard !Task.isCancelled else { return }
                 nickState = .missing
+                nickDiag = diag
             }
         }
     }

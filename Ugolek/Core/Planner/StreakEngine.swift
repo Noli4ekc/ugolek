@@ -83,8 +83,21 @@ enum StreakEngine {
             // подскажет актуальный ник; обновляем и пробуем ещё раз ровно один раз.
             if reply.ok == false, !friend.isGroup, !dryRun,
                let errText = reply.error, errText.contains("не найден") {
+                var freshNick: String?
+                var profileDiag = ""
                 switch await ProfileFetcher.fetch(handle: friend.handle) {
-                case .found(let fresh) where fresh != friend.label:
+                case .found(let fresh):
+                    if fresh != friend.label { freshNick = fresh }
+                case .blocked(let diag):
+                    profileDiag = diag
+                    // Фолбэк: тот же залогиненный WebView делает same-origin fetch —
+                    // неотличимо от браузера, бот-фильтр не срабатывает
+                    freshNick = await InboxRunner.shared.fetchProfileNickname(handle: friend.handle)
+                case .missing(let diag):
+                    profileDiag = diag
+                }
+
+                if let fresh = freshNick, fresh != friend.label {
                     var updated = friend
                     updated.label = fresh
                     AppStore.shared.update(updated)
@@ -106,11 +119,8 @@ enum StreakEngine {
                         continue
                     }
                     reply = retry
-                case .missing:
-                    // адрес не открылся: либо юзернейм сменили, либо бот-фильтр
-                    reply.error = "Страничка не найдена — возможно, друг сменил юзернейм"
-                case .blocked, .found:
-                    break // ник не изменился или профиль нечитаем — причина была в другом
+                } else if freshNick == nil, !profileDiag.isEmpty {
+                    reply.error = "Друг не найден; профиль не проверился (\(profileDiag))"
                 }
             }
             let ok = reply.ok ?? false
