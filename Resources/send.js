@@ -388,14 +388,15 @@
       if (!/[а-яА-Яa-zA-Z]/.test(before)) return 'today';
     }
 
-    // минуты / часы — всегда сегодня (regex ищет в хвосте)
+    // минуты / часы — всегда сегодня (regex ищет в хвосте); RU и EN бейджи
     if (/\b\d+\s*(сек|мин|минут|ч|час)/i.test(tail)) return 'today';
+    if (/\b\d+\s*(sec|second|min|minute|hour|hr)/i.test(tail)) return 'today';
     if (/\b\d+\s*m\b/i.test(tail)) return 'today';  // "5m"
     if (/\b\d+\s*h\b/i.test(tail)) return 'today';  // "2h"
     if (/\b(сегодня|только что|just now)\b/i.test(tail)) return 'today';
 
-    // вчера / дни — не сегодня
-    if (/\bвчера\b/i.test(tail) || /\b\d+\s*дн/i.test(tail)) return 'old';
+    // вчера / дни — не сегодня (RU и EN)
+    if (/вчера|yesterday/i.test(tail) || /\b\d+\s*(дн|day)/i.test(tail)) return 'old';
     return null; // непонятный формат
   }
 
@@ -411,15 +412,21 @@
     if (!list) return null;
     const nodes = Array.from(list.children);
 
+    // Разделитель — не сообщение: узлы с пузырями пропускаем сразу,
+    // чтобы текст «позвони сегодня» не сработал как граница даты.
+    const isMessageNode = (el) => !!el.querySelector("[data-e2e='dm-new-message-text']");
+
     let startIdx = -1;
     for (let i = nodes.length - 1; i >= 0; i--) {
+      if (isMessageNode(nodes[i])) continue;
       const txt = (nodes[i].innerText || '').trim().toLowerCase();
       if (!txt || txt.length > 40) continue;  // STRIKE-05: лимит 40 вместо 24
-      // STRIKE-05: ищем подстроку «сегодня» вместо точного совпадения
-      if (txt.includes('сегодня')) { startIdx = i; break; }
-      if (txt === 'вчера'
-          || /^(пн|вт|ср|чт|пт|сб|вс)\b/.test(txt)
-          || /^\d{1,2}\s+(янв|фев|мар|апр|ма[йя]|июн|июл|авг|сен|окт|ноя|дек)\b/.test(txt)) {
+      // STRIKE-05: ищем подстроку «сегодня» вместо точного совпадения;
+      //(lang=en) интерфейс рендерит "Today" — принимаем оба языка.
+      if (txt.includes('сегодня') || /^(today)\b/.test(txt)) { startIdx = i; break; }
+      if (txt === 'вчера' || txt === 'yesterday'
+          || /^(пн|вт|ср|чт|пт|сб|вс|(mon|tue|wed|thu|fri|sat|sun))\b/.test(txt)
+          || /^\d{1,2}\s+(янв|фев|мар|апр|ма[йя]|июн|июл|авг|сен|окт|ноя|дек|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))\b/.test(txt)) {
         return { mine: false, theirs: false };   // ближайшая граница старше — сегодня ничего нет
       }
     }
