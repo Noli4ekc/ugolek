@@ -425,17 +425,26 @@
       log('Юзернейм совпал: ' + actual);
 
       // Часть D: стрик уже продлён сегодня? Смотрим границы «Сегодня» по разделителю дат.
+      // Группа: стрик жив, если написал ХОТЯ БЫ кто-то (одного участника достаточно).
+      // Личка: стрик жив только если написали ОБЕ стороны.
       const flags = threadTodayFlags();
       if (flags) {
-        if (flags.mine && flags.theirs) {
-          log('🔥 Сегодня писали оба — стрик уже продлён, пропускаю без отправки');
-          return { ok: true, alreadyMaintained: true };
+        if (isGroup) {
+          if (flags.mine || flags.theirs) {
+            log('🔥 Группа: сегодня кто-то писал — стрик продлён, пропускаю');
+            return { ok: true, alreadyMaintained: true };
+          }
+        } else {
+          if (flags.mine && flags.theirs) {
+            log('🔥 Личка: оба писали сегодня — стрик уже продлён, пропускаю');
+            return { ok: true, alreadyMaintained: true };
+          }
+          if (flags.mine && !flags.theirs) {
+            log('🔥 Личка: последнее сегодня — моё, повтор бесполезен, пропускаю');
+            return { ok: true, alreadyMaintained: true };
+          }
+          // только его сегодня → пишем: наш ответ спасает стрик
         }
-        if (flags.mine && !flags.theirs) {
-          log('🔥 Последнее сегодня — моё, его реплики нет: повтор бесполезен, пропускаю');
-          return { ok: true, alreadyMaintained: true };
-        }
-        // только его сегодня / unknown → пишем: наш ответ спасает стрик
       }
       return { ok: true };
     }
