@@ -67,8 +67,17 @@ final class LocationKeeper: NSObject, CLLocationManagerDelegate {
 
     private func startIfNeeded() {
         guard isHolding else { return }
-        manager.allowsBackgroundLocationUpdates = true
-        manager.startUpdatingLocation()
+        // BG-05: установка allowsBackgroundLocationUpdates без выданного
+        // разрешения (.notDetermined/.denied) кидает NSInternalInconsistencyException.
+        // Аренду не глушим (watchdog и счётчик живут), просто не трогаем апдейты,
+        // пока пользователь не ответил на запрос.
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            manager.allowsBackgroundLocationUpdates = true
+            manager.startUpdatingLocation()
+        default:
+            break
+        }
     }
 
     private func stopIfNeeded() {
