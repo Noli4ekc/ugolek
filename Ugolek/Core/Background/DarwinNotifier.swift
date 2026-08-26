@@ -5,16 +5,17 @@ import Foundation
 
 private final class DarwinHost: NSObject {}
 
-/// Глобальный C-callback без захвата контекста — диспетчеризуем по имени уведомления.
+/// Глобальный C-callback: @convention(c) обязателен для CFNotificationCenter.
+@convention(c)
 private func _darwinCallback(
-    _ center: CFNotificationCenter,
+    _ center: CFNotificationCenter?,
     _ observer: UnsafeMutableRawPointer?,
     _ rawName: CFNotificationName?,
     _ object: UnsafeRawPointer?,
     _ userInfo: CFDictionary?
 ) {
     guard let rawName else { return }
-    let key = rawName.takeUnretainedValue() as String
+    let key = rawName as String
     DispatchQueue.main.async { DarwinNotifier.handle(key) }
 }
 
