@@ -1,14 +1,13 @@
 import Foundation
 
 /// Обёртка для Darwin-уведомлений между расширением и приложением.
-/// UgolekApp — struct, а Unmanaged требует class; используем глобальный NSObject.
 
 private final class DarwinHost: NSObject {}
 
-/// Глобальный C-callback: @convention(c) обязателен для CFNotificationCenter.
-@convention(c)
+/// Глобальный C-callback для CFNotificationCenter — global functions are
+/// implicitly C-callable; @convention(c) cannot be applied to declarations.
 private func _darwinCallback(
-    _ center: CFNotificationCenter?,
+    _ center: CFNotificationCenter,
     _ observer: UnsafeMutableRawPointer?,
     _ rawName: CFNotificationName?,
     _ object: UnsafeRawPointer?,
