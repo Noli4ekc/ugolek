@@ -7,14 +7,15 @@ private final class DarwinHost: NSObject {}
 /// Глобальный C-callback для CFNotificationCenter — global functions are
 /// implicitly C-callable; @convention(c) cannot be applied to declarations.
 private func _darwinCallback(
-    _ center: CFNotificationCenter,
+    _ center: CFNotificationCenter?,
     _ observer: UnsafeMutableRawPointer?,
     _ rawName: CFNotificationName?,
     _ object: UnsafeRawPointer?,
     _ userInfo: CFDictionary?
 ) {
     guard let rawName else { return }
-    let key = rawName as String
+    // CFNotificationName нельзя бриджеть в String напрямую — только через rawValue (CFString)
+    let key = rawName.rawValue as String
     DispatchQueue.main.async { DarwinNotifier.handle(key) }
 }
 
