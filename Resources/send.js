@@ -304,8 +304,12 @@
       for (const item of list.items) {
         const rank = rankOf(item, h, l, isGroup);
         if (rank > 4) continue;
-        const key = item.getAttribute('data-conv-id')
-          || (nicknameOfItem(item) + '|' + itemTitle(item));
+        // основной ключ — ник (стабилен при React-виртуализации);
+        // conv-id и title — запасные
+        const nicknameKey = nicknameOfItem(item).trim().toLowerCase();
+        const key = nicknameKey
+          || item.getAttribute('data-conv-id')
+          || itemTitle(item).toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
         found.push({ item, rank });       // ранг 1 лучше 2 лучше 3 лучше 4
@@ -396,55 +400,58 @@
     return { mine, theirs };
   }
 
-  // Открыть чат нужного друга с проверкой юзернейма по открытой панели.
-  // Бросает «…не найден…» — такие ошибки НЕ повторяются второй попыткой.
+  // Открыть чат нужного друга: группа (проверка стрика по треду) или личка
+  // (проверка юзернейма + стрика). Бросает «…не найден…» — не повторяется второй попыткой.
   async function findAndOpenVerifiedChat(username, label, isGroup) {
     const wanted = String(username).toLowerCase();
     const candidates = await collectCandidates(wanted, String(label || '').toLowerCase(), isGroup);
     if (!candidates.length) throw new Error('Друг не найден в списке чатов');
 
+    const checkedHandles = new Set();   // не открываем дважды один и тот же хендл (React-дубли)
     let unverifiable = 0;
+
     for (const cand of candidates) {
-      const fresh = resolveFresh(cand.item);           // защита от React-перерисовки (PLAN-06)
+      const fresh = resolveFresh(cand.item);
       if (!fresh) continue;
       const opened = await openChat(fresh);
       if (!opened) continue;
 
-      if (isGroup) return { ok: true };
+      // === Часть D: проверяем стрик ДО верификации юзернейма (для групп — единственный шаг) ===
+      const flags = threadTodayFlags();
+      if (isGroup) {
+        if (flags && (flags.mine || flags.theirs)) {
+          log('🔥 Группа: сегодня кто-то писал — стрик продлён, пропускаю');
+          return { ok: true, alreadyMaintained: true };
+        }
+        return { ok: true };                     // группа: юзернейм не проверяется
+      }
 
+      // === Личка: верификация юзернейма ===
       const actual = handleFromOpenChat();
       if (!actual) {
         unverifiable++;
         log('Не смог прочитать юзернейм открытого чата — кандидат пропущен');
-        continue;                                      // вслепую не пишем
+        continue;
       }
       if (actual !== wanted) {
+        if (checkedHandles.has(actual)) continue;  // уже проверяли этот хендл — дубль React
+        checkedHandles.add(actual);
         log('Юзернейм не совпал: ожидался ' + wanted + ', открылся ' + actual + ' — пробую следующего');
-        continue;                                      // панель переключится при открытии следующего
+        continue;
       }
       log('Юзернейм совпал: ' + actual);
 
-      // Часть D: стрик уже продлён сегодня? Смотрим границы «Сегодня» по разделителю дат.
-      // Группа: стрик жив, если написал ХОТЯ БЫ кто-то (одного участника достаточно).
-      // Личка: стрик жив только если написали ОБЕ стороны.
-      const flags = threadTodayFlags();
+      // === Личка: проверяем стрик после верификации ===
       if (flags) {
-        if (isGroup) {
-          if (flags.mine || flags.theirs) {
-            log('🔥 Группа: сегодня кто-то писал — стрик продлён, пропускаю');
-            return { ok: true, alreadyMaintained: true };
-          }
-        } else {
-          if (flags.mine && flags.theirs) {
-            log('🔥 Личка: оба писали сегодня — стрик уже продлён, пропускаю');
-            return { ok: true, alreadyMaintained: true };
-          }
-          if (flags.mine && !flags.theirs) {
-            log('🔥 Личка: последнее сегодня — моё, повтор бесполезен, пропускаю');
-            return { ok: true, alreadyMaintained: true };
-          }
-          // только его сегодня → пишем: наш ответ спасает стрик
+        if (flags.mine && flags.theirs) {
+          log('🔥 Личка: оба писали сегодня — стрик уже продлён, пропускаю');
+          return { ok: true, alreadyMaintained: true };
         }
+        if (flags.mine && !flags.theirs) {
+          log('🔥 Личка: последнее сегодня — моё, повтор бесполезен, пропускаю');
+          return { ok: true, alreadyMaintained: true };
+        }
+        // только его сегодня → пишем: наш ответ спасает стрик
       }
       return { ok: true };
     }
