@@ -53,7 +53,7 @@ enum StreakEngine {
             let outgoingMessage = store.settings.useRandomMessages
                 ? MessagePool.random(excluding: lastRandomMessage)
                 : store.settings.messageText
-            let reply = await InboxRunner.shared.send(
+            var reply = await InboxRunner.shared.send(
                 to: friend.handle,
                 label: friend.label,
                 verify: store.settings.recipientVerification,
@@ -77,6 +77,41 @@ enum StreakEngine {
                     detail: "🔥 уже продлён сегодня"
                 ))
                 continue
+            }
+
+            // Часть B: друг не найден — возможно, сменился НИК. Профиль (адрес = юзернейм)
+            // подскажет актуальный ник; обновляем и пробуем ещё раз ровно один раз.
+            if reply.ok == false, !friend.isGroup, !dryRun,
+               let errText = reply.error, errText.contains("не найден") {
+                switch await ProfileFetcher.fetch(handle: friend.handle) {
+                case .found(let fresh) where fresh != friend.label:
+                    var updated = friend
+                    updated.label = fresh
+                    AppStore.shared.update(updated)
+                    let retry = await InboxRunner.shared.send(
+                        to: friend.handle,
+                        label: fresh,
+                        verify: store.settings.recipientVerification,
+                        message: outgoingMessage,
+                        isGroup: false,
+                        dryRun: false,
+                        fast: store.settings.fastMode
+                    )
+                    if retry.alreadyMaintained == true {
+                        if !dryRun { AppStore.shared.markStreakMaintainedToday(friend.id) }
+                        results.append(FriendResult(
+                            friendId: friend.id, handle: friend.handle,
+                            status: .skipped, detail: "🔥 уже продлён сегодня"
+                        ))
+                        continue
+                    }
+                    reply = retry
+                case .missing:
+                    // адрес не открылся: либо юзернейм сменили, либо бот-фильтр
+                    reply.error = "Страничка не найдена — возможно, друг сменил юзернейм"
+                case .found:
+                    break // ник не изменился — причина была в другом
+                }
             }
             let ok = reply.ok ?? false
             let status: FriendSendStatus = ok ? .sent : (store.settings.skipUnreachable ? .skipped : .failed)

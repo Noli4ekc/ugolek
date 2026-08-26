@@ -31,6 +31,19 @@ struct FriendsView: View {
                     List {
                         ForEach(visible) { friend in
                             FriendRow(friend: friend) { editing = friend }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    if friend.lastSentDay == Day.today() {
+                                        Button("↺ Вернуть в очередь") {
+                                            AppStore.shared.resetSentDay(friend.id)
+                                        }
+                                        .tint(.gray)
+                                    } else {
+                                        Button("🔥 Продлили сами") {
+                                            AppStore.shared.markStreakMaintainedToday(friend.id)
+                                        }
+                                        .tint(.orange)
+                                    }
+                                }
                         }
                         .onDelete { offsets in
                             for index in offsets { store.delete(visible[index]) }
@@ -147,6 +160,13 @@ struct FriendEditor: View {
     @State private var isGroup = false
     @State private var hasFlame = true
 
+    // Часть C: автоопределение ника из публичного профиля (PLAN-10/14)
+    enum NickState { case idle, checking, found, blocked, missing }
+    @State private var nickState: NickState = .idle
+    @State private var nickTask: Task<Void, Never>?
+    @State private var autoFilledLabel: String?
+    @State private var appearedHandle: String?   // хендл на момент открытия — его не ре-фетчим
+
     private var canSave: Bool {
         handle.trimmingCharacters(in: .whitespaces).count >= 2
     }
@@ -161,7 +181,25 @@ struct FriendEditor: View {
                     )
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+                    .onChange(of: handle) { _, newValue in
+                        handleChanged(newValue)
+                    }
                     TextField("Метка (необязательно)", text: $label)
+                    switch nickState {
+                    case .idle:
+                        EmptyView()
+                    case .checking:
+                        Label("Смотрю профиль…", systemImage: "hourglass").foregroundStyle(.secondary)
+                    case .found:
+                        Label("Имя распознано: \(autoFilledLabel ?? "")", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    case .blocked:
+                        Label("Не удалось прочитать профиль — впиши имя руками", systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                    case .missing:
+                        Label("Страничка не найдена — проверь юзернейм", systemImage: "questionmark.circle")
+                            .foregroundStyle(.red)
+                    }
                 } header: {
                     Text(isGroup ? "Группа" : "Друг")
                 }
@@ -169,7 +207,7 @@ struct FriendEditor: View {
                     Toggle("Это групповой чат", isOn: $isGroup)
                     Toggle("Есть огонёк 🔥", isOn: $hasFlame)
                 } footer: {
-                    Text("Для друга укажи username из TikTok. Для группового чата — точное название, под которым он отображается в сообщениях TikTok. Флажок «огонёк» включает друга в ежедневную рассылку (в веб-версии TikTok огонёк не виден, поэтому отмечаем вручную; погасший огонёк восстановим — просто оставь флажок включённым).")
+                    Text("Для друга укажи username из TikTok — Уголёк сам подтянет имя с его странички (можно поправить). Для группового чата — точное название, под которым он отображается в сообщениях TikTok. Флажок «огонёк» включает друга в ежедневную рассылку (в веб-версии TikTok огонёк не виден, поэтому отмечаем вручную; погасший огонёк восстановим — просто оставь флажок включённым).")
                 }
                 if let friend {
                     Section {
@@ -200,9 +238,48 @@ struct FriendEditor: View {
                     isGroup = f.isGroup
                     hasFlame = f.hasFlame
                 }
+                appearedHandle = handle
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // Часть C: юзернейм изменился → подтягиваем актуальный ник с публичной странички.
+    // Автозаполнение не затирает ручные правки: перезаписываем только пустое поле
+    // или своё же предыдущее авто-значение.
+    private func handleChanged(_ newValue: String) {
+        nickTask?.cancel()
+        let clean = newValue.trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: "@", with: "")
+        guard !isGroup, !clean.isEmpty else {
+            nickState = .idle
+            return
+        }
+        if friend != nil && clean == appearedHandle {
+            nickState = .idle   // открыли существующего — имя уже сохранено
+            return
+        }
+        nickState = .checking
+        nickTask = Task {
+            try? await Task.sleep(for: .milliseconds(800))   // debounce
+            guard !Task.isCancelled else { return }
+            switch await ProfileFetcher.fetch(handle: clean) {
+            case .found(let fresh):
+                guard !Task.isCancelled else { return }
+                nickState = .found
+                autoFilledLabel = fresh
+                // перезаписываем только пустую метку или своё же прежнее авто-значение
+                if label.isEmpty || label == autoFilledLabel {
+                    label = fresh
+                }
+            case .blocked:
+                guard !Task.isCancelled else { return }
+                nickState = .blocked
+            case .missing:
+                guard !Task.isCancelled else { return }
+                nickState = .missing
+            }
+        }
     }
 
     private func save() {
