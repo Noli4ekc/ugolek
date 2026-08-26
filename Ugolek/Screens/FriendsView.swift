@@ -216,6 +216,13 @@ struct FriendEditor: View {
                 }
                 Section {
                     Toggle("Это групповой чат", isOn: $isGroup)
+                        .onChange(of: isGroup) { _, isOn in
+                            if isOn {                           // NICK-12: сброс при переключении на группу
+                                nickTask?.cancel()
+                                nickState = .idle
+                                nickDiag = ""
+                            }
+                        }
                     Toggle("Есть огонёк 🔥", isOn: $hasFlame)
                 } footer: {
                     Text("Для друга укажи username из TikTok — Уголёк сам подтянет имя с его странички (можно поправить). Для группового чата — точное название, под которым он отображается в сообщениях TikTok. Флажок «огонёк» включает друга в ежедневную рассылку (в веб-версии TikTok огонёк не виден, поэтому отмечаем вручную; погасший огонёк восстановим — просто оставь флажок включённым).")
@@ -281,6 +288,7 @@ struct FriendEditor: View {
 
             var freshNick: String?
             var diag = ""
+            var wasMissing = false
             switch await ProfileFetcher.fetch(handle: clean) {
             case .found(let fresh):
                 freshNick = fresh
@@ -288,6 +296,7 @@ struct FriendEditor: View {
                 diag = "urlsession: " + why
             case .missing(let why):
                 diag = "urlsession: " + why
+                wasMissing = true
             }
 
             // Прямой запрос заблокирован анти-ботом — пробуем настоящим WebView
@@ -313,13 +322,16 @@ struct FriendEditor: View {
             guard !Task.isCancelled else { return }
             if let fresh = freshNick {
                 nickState = .found
+                let previousAuto = autoFilledLabel
                 autoFilledLabel = fresh
-                // перезаписываем только пустую метку или своё же прежнее авто-значение
-                if label.isEmpty || label == autoFilledLabel {
+                // перезаписываем пустое поле или своё прежнее авто-значение;
+                // ручные правки (having different value) не трогаем (NICK-04)
+                if label.isEmpty || label == previousAuto {
                     label = fresh
                 }
             } else {
-                nickState = .blocked
+                // NICK-05: 404 → .missing, прочие неудачи → .blocked
+                nickState = wasMissing ? .missing : .blocked
                 nickDiag = diag
             }
         }

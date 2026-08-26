@@ -82,7 +82,11 @@ enum StreakEngine {
             // Часть B: друг не найден — возможно, сменился НИК. Профиль (адрес = юзернейм)
             // подскажет актуальный ник; обновляем и пробуем ещё раз ровно один раз.
             if reply.ok == false, !friend.isGroup, !dryRun,
-               let errText = reply.error, errText.contains("не найден") {
+               let errText = reply.error,
+               errText.contains("не найден"), errText.contains("в списке чатов") {
+                // Только «Друг не найден в списке» — логично обновить ник.
+                // Верификационные ошибки («не прошёл верификацию») — проблема селектора,
+                // а не имени, обновлять там нечего (NICK-06).
                 var freshNick: String?
                 var profileDiag = ""
                 switch await ProfileFetcher.fetch(handle: friend.handle) {
@@ -102,7 +106,9 @@ enum StreakEngine {
                 }
 
                 if let fresh = freshNick, fresh != friend.label {
-                    var updated = friend
+                    // NICK-11: берём актуальную копию из стора, чтобы не затереть
+                    // параллельные правки из UI (переключатели, огонёк и пр.)
+                    var updated = AppStore.shared.friends.first(where: { $0.id == friend.id }) ?? friend
                     updated.label = fresh
                     AppStore.shared.update(updated)
                     let retry = await InboxRunner.shared.send(
