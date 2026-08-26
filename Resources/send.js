@@ -304,16 +304,19 @@
       for (const item of list.items) {
         const rank = rankOf(item, h, l, isGroup);
         if (rank > 4) continue;
-        // основной ключ — ник (стабилен при React-виртуализации);
-        // conv-id и title — запасные
-        const nicknameKey = nicknameOfItem(item).trim().toLowerCase();
-        const key = nicknameKey
-          || item.getAttribute('data-conv-id')
-          || itemTitle(item).toLowerCase();
+        // conv-id — основной; ник+заголовок — запасные.
+        // Два разных человека с одинаковым ником НЕ сливаются
+        // (разные conv-id → оба попадают в кандидаты → checkedHandles
+        //  отсекает дубли РЕАЛЬНЫХ копий с одинаковым хендлом при открытии).
+        const key = item.getAttribute('data-conv-id')
+          || (nicknameOfItem(item).toLowerCase() + '|' + itemTitle(item).toLowerCase());
         if (seen.has(key)) continue;
         seen.add(key);
         found.push({ item, rank });       // ранг 1 лучше 2 лучше 3 лучше 4
       }
+
+      // если нашли хотя бы одного rank1 — дальше скроллить не надо
+      if (found.some(c => c.rank === 1)) break;
 
       const before = target.scrollTop;
       // шаг — ТОЛЬКО рабочая формула из основного поиска (PLAN-01), не CFG.scrollStep
