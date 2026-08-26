@@ -17,11 +17,11 @@ enum StreakEngine {
         let store = AppStore.shared
         let start = Date()
 
-        // STRIKE-09 FIX: guard от параллельных прогонов — не даём двум потокам
-        // одновременно включать одного друга в targets
-        guard !RunCoordinator.shared.runActive || dryRun else {
-            return RunRecord(date: start, durationSeconds: 0, results: [])
-        }
+        // Сериализация прогонов живёт в RunCoordinator: все три входа (start /
+        // startHeadless / startDryTest) проверяют runActive ДО вызова движка.
+        // Бывший здесь STRIKE-09-гвард сравнивал прогон с его же флагом
+        // (runActive уже true к этому моменту) и мгновенно убивал легитимный
+        // запуск: оверлей мелькал и закрывался без ошибки и записи в историю.
 
         var logLines: [String] = []
         var lastRandomMessage: String? = nil
