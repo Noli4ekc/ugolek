@@ -242,6 +242,10 @@ struct FriendEditor: View {
                     .disabled(!canSave)
                 }
             }
+            .onDisappear {
+                // NICK-03: каскад слоёв 2–3 не должен стрелять после закрытия редактора
+                nickTask?.cancel()
+            }
             .onAppear {
                 if let f = friend {
                     handle = f.handle

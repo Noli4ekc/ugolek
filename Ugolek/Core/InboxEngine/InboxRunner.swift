@@ -46,12 +46,12 @@ final class InboxRunner: NSObject {
     /// Худший путь JS-отправки: скролл до 60×1200 мс × две попытки + перезагрузки страницы.
     private static let sendTimeout: TimeInterval = 200
 
-    func ensureLoaded() async throws {
+    func ensureLoaded(makeKey: Bool = true) async throws {
         if webView != nil, loadedURL != nil { return }
         // Второй одновременный загрузчик перезаписал бы continuation первого — тот завис бы навечно
         guard loadContinuation == nil else { throw InboxError.busy }
 
-        try await makeWindowAndWebView()
+        try await makeWindowAndWebView(makeKey: makeKey)
 
         let url: URL = try await withCheckedThrowingContinuation { cont in
             loadContinuation = cont
@@ -181,10 +181,15 @@ final class InboxRunner: NSObject {
     }
 
     /// Последний фолбэк для редактора: грузим движок (если ещё не загружен) и читаем ник.
+    /// makeKey: false — редактор не должен терять клавиатуру из-за скрытого окна (NICK-01).
+    /// После чтения отпускаем first responder, если окно не было key до этого.
     /// nil — нет входа в TikTok либо страница не загрузилась.
     func fetchProfileNicknameAfterEnsure(handle: String) async -> String? {
-        guard (try? await ensureLoaded()) != nil else { return nil }
-        return await fetchProfileNickname(handle: handle)
+        let wasKey = window?.isKeyWindow ?? false
+        guard (try? await ensureLoaded(makeKey: false)) != nil else { return nil }
+        let nick = await fetchProfileNickname(handle: handle)
+        if !wasKey { webView?.resignFirstResponder() }
+        return nick
     }
 
     func chatProbe() async -> String {
@@ -207,7 +212,7 @@ final class InboxRunner: NSObject {
         loadedURL = nil
     }
 
-    private func makeWindowAndWebView() async throws {
+    private func makeWindowAndWebView(makeKey: Bool = true) async throws {
         guard webView == nil else { return }
 
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
@@ -219,8 +224,12 @@ final class InboxRunner: NSObject {
         window.alpha = 0.01
         window.backgroundColor = .clear
         window.isHidden = false
-        // key-окно: иначе document.hasFocus()=false и TikTok сворачивает чат после ввода
-        window.makeKey()
+        // key-окно: иначе document.hasFocus()=false и TikTok сворачивает чат после ввода.
+        // Профильные загрузки (makeKey: false) не крадут клавиатуру у редактора (NICK-01):
+        // перед реальной отправкой send() всё равно вызовет makeKey повторно.
+        if makeKey {
+            window.makeKey()
+        }
 
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
@@ -239,7 +248,9 @@ final class InboxRunner: NSObject {
 
         self.window = window
         self.webView = webView
-        _ = webView.becomeFirstResponder()
+        if makeKey {
+            _ = webView.becomeFirstResponder()
+        }
 
         await SessionStore.shared.restoreCookies(into: configuration.websiteDataStore.httpCookieStore)
     }
