@@ -20,73 +20,71 @@ struct FriendsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if store.friends.isEmpty {
-                    ContentUnavailableView(
-                        "Пока никого",
-                        systemImage: "person.badge.plus",
-                        description: Text("Добавь друзей — и Уголёк будет продлевать с ними огоньки")
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 12) {
+                    ScreenTitle(
+                        text: "Друзья",
+                        subtitle: store.friends.isEmpty ? "Поддерживай огоньки вместе" : "\(store.friends.count) в твоём круге"
                     )
-                } else {
-                    List {
+
+                    if store.friends.isEmpty {
+                        EmptyFriendsCard { showingAdd = true }
+                    } else if visible.isEmpty {
+                        NoSearchResultsCard(query: search)
+                    } else {
                         ForEach(visible) { friend in
                             FriendRow(friend: friend) { editing = friend }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        store.delete(friend)
+                                    } label: {
+                                        Label("Удалить", systemImage: "trash")
+                                    }
                                     if friend.lastSentDay == Day.today() {
-                                        Button("↺ Вернуть в очередь") {
+                                        Button("Вернуть в очередь") {
                                             AppStore.shared.resetSentDay(friend.id)
                                         }
                                         .tint(.gray)
                                     } else {
-                                        Button("🔥 Продлили сами") {
+                                        Button("Продлили сами") {
                                             AppStore.shared.markStreakMaintainedToday(friend.id)
                                         }
-                                        .tint(.orange)
+                                        .tint(UiTheme.accent)
                                     }
                                 }
                         }
-                        .onDelete { offsets in
-                            for index in offsets { store.delete(visible[index]) }
-                        }
                     }
                 }
+                .padding(.bottom, 24)
             }
-            .navigationTitle("Друзья")
-            .searchable(text: $search, prompt: "Поиск")
+            .background(UiTheme.background.ignoresSafeArea())
+            .scrollIndicators(.hidden)
+            .searchable(text: $search, prompt: "Поиск друзей")
             .toolbar {
-                Menu {
-                    Button {
-                        showingAdd = true
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button { showingAdd = true } label: {
+                            Label("Добавить друга", systemImage: "person.badge.plus")
+                        }
+                        Button { showExportSheet = true } label: {
+                            Label("Экспорт в JSON", systemImage: "square.and.arrow.up")
+                        }
+                        Button { showImportPicker = true } label: {
+                            Label("Импорт из JSON", systemImage: "square.and.arrow.down")
+                        }
                     } label: {
-                        Label("Добавить друга", systemImage: "plus")
+                        Image(systemName: "ellipsis.circle")
+                            .font(.title3)
                     }
-                    Button {
-                        showExportSheet = true
-                    } label: {
-                        Label("Экспорт в JSON", systemImage: "square.and.arrow.up")
-                    }
-                    Button {
-                        showImportPicker = true
-                    } label: {
-                        Label("Импорт из JSON", systemImage: "square.and.arrow.down")
-                    }
-                } label: {
-                    Image(systemName: "plus.circle")
+                    .accessibilityLabel("Ещё действия")
                 }
             }
-            .sheet(isPresented: $showingAdd) {
-                FriendEditor(friend: nil)
-            }
-            .sheet(item: $editing) { friend in
-                FriendEditor(friend: friend)
-            }
-            .sheet(isPresented: $showExportSheet) {
-                ShareSheet(items: [store.exportFriendsJSON()])
-            }
-            .fileImporter(
-                isPresented: $showImportPicker,
-                allowedContentTypes: [.json, .plainText]
-            ) { result in
+            .tint(UiTheme.accent)
+            .preferredColorScheme(.dark)
+            .sheet(isPresented: $showingAdd) { FriendEditor(friend: nil) }
+            .sheet(item: $editing) { friend in FriendEditor(friend: friend) }
+            .sheet(isPresented: $showExportSheet) { ShareSheet(items: [store.exportFriendsJSON()]) }
+            .fileImporter(isPresented: $showImportPicker, allowedContentTypes: [.json, .plainText]) { result in
                 switch result {
                 case .success(let url):
                     guard url.startAccessingSecurityScopedResource(),
@@ -106,10 +104,69 @@ struct FriendsView: View {
                 set: { if !$0 { importMessage = nil } }
             )) {
                 Button("Ок", role: .cancel) {}
-            } message: {
-                Text(importMessage ?? "")
-            }
+            } message: { Text(importMessage ?? "") }
         }
+    }
+}
+
+#Preview("Friends") {
+    FriendsView()
+        .preferredColorScheme(.dark)
+}
+
+private struct EmptyFriendsCard: View {
+    let onAdd: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "person.3.sequence.fill")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundStyle(UiTheme.accent)
+                .frame(width: 64, height: 64)
+                .background(UiTheme.accent.opacity(0.14), in: Circle())
+            VStack(spacing: 6) {
+                Text("Пока никого")
+                    .font(.system(size: 21, weight: .bold))
+                    .foregroundStyle(UiTheme.text)
+                Text("Добавь друзей — и Уголёк будет продлевать с ними огоньки")
+                    .font(.subheadline)
+                    .foregroundStyle(UiTheme.textMuted)
+                    .multilineTextAlignment(.center)
+            }
+            Button(action: onAdd) {
+                Label("Добавить друга", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(UiTheme.accent, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Открыть форму добавления нового друга")
+        }
+        .cardStyle()
+        .padding(.horizontal, 16)
+    }
+}
+
+private struct NoSearchResultsCard: View {
+    let query: String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.title2)
+                .foregroundStyle(UiTheme.textFaint)
+            Text("Ничего не найдено")
+                .font(.headline)
+                .foregroundStyle(UiTheme.text)
+            Text("Попробуй другой запрос для «\(query)»")
+                .font(.subheadline)
+                .foregroundStyle(UiTheme.textMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .cardStyle()
+        .padding(.horizontal, 16)
     }
 }
 
@@ -118,25 +175,32 @@ private struct FriendRow: View {
     let onEdit: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 14) {
             Button(action: onEdit) {
-                HStack {
+                HStack(spacing: 14) {
                     Image(systemName: friend.isGroup ? "person.3.fill" : "person.fill")
-                        .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 2) {
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(friend.isGroup ? UiTheme.green : UiTheme.accent)
+                        .frame(width: 42, height: 42)
+                        .background((friend.isGroup ? UiTheme.green : UiTheme.accent).opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(friend.displayName)
-                            .foregroundStyle(.primary)
-                        Text(friend.isGroup ? "групповой чат" : "@\(friend.handle)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(UiTheme.text)
+                            .lineLimit(1)
+                        Text(friend.isGroup ? "Групповой чат" : "@\(friend.handle)")
+                            .font(.system(size: 13))
+                            .foregroundStyle(UiTheme.textMuted)
+                            .lineLimit(1)
                     }
                 }
             }
             .buttonStyle(.plain)
-            Spacer()
+            Spacer(minLength: 4)
             if friend.lastSentDay == Day.today() {
                 Image(systemName: "flame.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(UiTheme.accent)
+                    .symbolEffect(.pulse, options: .repeating, isActive: friend.isEnabled)
             }
             Toggle("", isOn: Binding(
                 get: { friend.isEnabled },
@@ -147,7 +211,12 @@ private struct FriendRow: View {
                 }
             ))
             .labelsHidden()
+            .tint(UiTheme.accent)
+            .accessibilityLabel(friend.isEnabled ? "\(friend.displayName) включён" : "\(friend.displayName) выключён")
         }
+        .cardStyle()
+        .padding(.horizontal, 16)
+        .contentShape(Rectangle())
     }
 }
 
@@ -161,7 +230,7 @@ struct FriendEditor: View {
     @State private var hasFlame = true
 
     // Часть C: автоопределение ника из публичного профиля (PLAN-10/14)
-    enum NickState { case idle, checking, found, blocked, missing }
+    enum NickState: Hashable { case idle, checking, found, blocked, missing }
     @State private var nickState: NickState = .idle
     @State private var nickDiag = ""
     @State private var nickTask: Task<Void, Never>?
@@ -186,31 +255,38 @@ struct FriendEditor: View {
                         handleChanged(newValue)
                     }
                     TextField("Метка (необязательно)", text: $label)
-                    switch nickState {
-                    case .idle:
-                        EmptyView()
-                    case .checking:
-                        Label("Смотрю профиль…", systemImage: "hourglass").foregroundStyle(.secondary)
-                    case .found:
-                        Label("Имя распознано: \(autoFilledLabel ?? "")", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    case .blocked:
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label("Не удалось прочитать профиль — впиши имя руками", systemImage: "exclamationmark.triangle")
-                                .foregroundStyle(.orange)
-                            Text("diag: \(nickDiag)")
-                                .font(.caption2)
+                    Group {
+                        switch nickState {
+                        case .idle:
+                            EmptyView()
+                        case .checking:
+                            Label("Смотрю профиль…", systemImage: "hourglass")
                                 .foregroundStyle(.secondary)
-                        }
-                    case .missing:
-                        VStack(alignment: .leading, spacing: 2) {
-                            Label("Страничка не найдена — проверь юзернейм", systemImage: "questionmark.circle")
-                                .foregroundStyle(.red)
-                            Text("diag: \(nickDiag)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .symbolEffect(.rotate, options: .repeating)
+                        case .found:
+                            Label("Имя распознано: \(autoFilledLabel ?? "")", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                        case .blocked:
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label("Не удалось прочитать профиль — впиши имя руками", systemImage: "exclamationmark.triangle")
+                                    .foregroundStyle(.orange)
+                                Text("diag: \(nickDiag)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        case .missing:
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label("Страничка не найдена — проверь юзернейм", systemImage: "questionmark.circle")
+                                    .foregroundStyle(.red)
+                                Text("diag: \(nickDiag)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
+                    .id(nickState)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .animation(.easeInOut(duration: 0.2), value: nickState)
                 } header: {
                     Text(isGroup ? "Группа" : "Друг")
                 }
