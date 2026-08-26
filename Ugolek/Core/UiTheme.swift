@@ -129,3 +129,19 @@ struct SettingsRow<Accessory: View>: View {
         .frame(minHeight: 44)
     }
 }
+
+// MARK: - Card Style Modifier
+
+struct CardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(16)
+            .background(UiTheme.surface, in: RoundedRectangle(cornerRadius: UiTheme.rowRadius, style: .continuous))
+    }
+}
+
+extension View {
+    func cardStyle() -> some View {
+        modifier(CardStyle())
+    }
+}

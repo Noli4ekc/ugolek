@@ -121,7 +121,7 @@ struct HomeDemo: View {
                 // Три метрики
                 HStack(spacing: 10) {
                     MetricCard(value: "5", label: "друзей", color: UiTheme.accent)
-                    MetricCard(value: "3", label: "сегодня", color: UiTheme.green)
+                    MetricCard(value: "3", label: "сегодня", color: UiTheme.success)
                     MetricCard(value: "48м", label: "экономии", color: UiTheme.text)
                 }
                 .padding(.horizontal, 24)
@@ -139,12 +139,12 @@ struct HomeDemo: View {
                     DemoFriend(name: "Алиса", handle: "@alisa_k", days: 12, color: UiTheme.accent)
                     DemoFriend(name: "Максим", handle: "@maxim_s", days: 8, color: .blue)
                     DemoFriend(name: "Даша", handle: "@dasha_m", days: 5, color: .pink)
-                    DemoFriend(name: "Кирилл", handle: "@kirill_v", days: 3, color: UiTheme.green)
+                    DemoFriend(name: "Кирилл", handle: "@kirill_v", days: 3, color: UiTheme.success)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
 
-                OpalButton(title: "Отправить сейчас", filled: true) {}
+                UgolekButton(title: "Отправить сейчас", filled: true) {}
                     .padding(.horizontal, 24)
                     .padding(.bottom, 16)
             }
@@ -226,7 +226,7 @@ struct FriendsDemo: View {
                     DemoFriend(name: "Алиса", handle: "@alisa_k", days: 12, color: UiTheme.accent)
                     DemoFriend(name: "Максим", handle: "@maxim_s", days: 8, color: .blue)
                     DemoFriend(name: "Даша", handle: "@dasha_m", days: 5, color: .pink)
-                    DemoFriend(name: "Кирилл", handle: "@kirill_v", days: 3, color: UiTheme.green)
+                    DemoFriend(name: "Кирилл", handle: "@kirill_v", days: 3, color: UiTheme.success)
                 }
                 .padding(.horizontal, 24)
             }
@@ -286,9 +286,9 @@ private struct HistoryRow: View {
         HStack(spacing: 12) {
             Image(systemName: ok ? "checkmark" : "pause")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(ok ? UiTheme.green : UiTheme.textFaint)
+                .foregroundStyle(ok ? UiTheme.success : UiTheme.textFaint)
                 .frame(width: 34, height: 34)
-                .background(RoundedRectangle(cornerRadius: 9).fill(ok ? UiTheme.green.opacity(0.12) : UiTheme.surface))
+                .background(RoundedRectangle(cornerRadius: 9).fill(ok ? UiTheme.success.opacity(0.12) : UiTheme.surface))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(name)
@@ -322,7 +322,7 @@ struct SettingsDemo: View {
                     SettingsRow(icon: "person.fill", iconColor: UiTheme.textMuted, title: "Никнейм", value: "@kirill_v")
                 }
                 settingsGroup("Расписание") {
-                    SettingsRow(icon: "clock.fill", iconColor: UiTheme.green, title: "Время отправки", value: "20:00")
+                    SettingsRow(icon: "clock.fill", iconColor: UiTheme.success, title: "Время отправки", value: "20:00")
                     SettingsRow(icon: "dice.fill", iconColor: UiTheme.textMuted, title: "Дрожание времени", value: "±15 мин")
                 }
                 settingsGroup("Сообщения") {
@@ -330,7 +330,7 @@ struct SettingsDemo: View {
                     SettingsRow(icon: "text.quote", iconColor: UiTheme.textMuted, title: "Пул фраз", value: "30 фраз")
                 }
                 settingsGroup("Режим работы") {
-                    SettingsRow(icon: "location.fill", iconColor: UiTheme.green, title: "Гео всегда", value: "Выкл")
+                    SettingsRow(icon: "location.fill", iconColor: UiTheme.success, title: "Гео всегда", value: "Выкл")
                     SettingsRow(icon: "bolt.fill", iconColor: UiTheme.textMuted, title: "Быстрый режим", value: "Выкл")
                 }
             }

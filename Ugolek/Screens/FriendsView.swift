@@ -180,9 +180,9 @@ private struct FriendRow: View {
                 HStack(spacing: 14) {
                     Image(systemName: friend.isGroup ? "person.3.fill" : "person.fill")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(friend.isGroup ? UiTheme.green : UiTheme.accent)
+                        .foregroundStyle(friend.isGroup ? UiTheme.success : UiTheme.accent)
                         .frame(width: 42, height: 42)
-                        .background((friend.isGroup ? UiTheme.green : UiTheme.accent).opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                        .background((friend.isGroup ? UiTheme.success : UiTheme.accent).opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 4) {
                         Text(friend.displayName)
                             .font(.system(size: 16, weight: .semibold))
