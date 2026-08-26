@@ -29,7 +29,7 @@
       "id": "3",
       "title": "Каркас приложения: project.yml (XcodeGen) + SwiftUI-скелет",
       "description": "XcodeGen-проект (iOS 17, только iPhone), минимальное SwiftUI-приложение «Привет, Уголёк!».",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         "2"
       ],
@@ -99,7 +99,7 @@
       "id": "8",
       "title": "TabView с 4 вкладками (Главная, Друзья, История, Настройки)",
       "description": "Нативная навигация, экраны-заглушки.",
-      "status": "in-progress",
+      "status": "done",
       "dependencies": [
         "7"
       ],
@@ -323,7 +323,7 @@
       "id": "24",
       "title": "Экран «История» полностью: статистика и экспорт",
       "description": "Список прогонов, процент успеха, детали ошибок, экспорт лога.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "23"
       ],
@@ -336,7 +336,7 @@
       "id": "25",
       "title": "Пул случайных фраз (~30) + переключатель",
       "description": "Собственный набор коротких сообщений, случайный выбор без повторов подряд.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "24"
       ],
@@ -349,7 +349,7 @@
       "id": "26",
       "title": "Устойчивость: ретраи (до 2) и пропуск недоступных",
       "description": "Повтор при неудаче друга, режим «пропускать недоступных».",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "25"
       ],
@@ -362,7 +362,7 @@
       "id": "27",
       "title": "Импорт/экспорт списка друзей JSON",
       "description": "Через системный шерер файлов.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "26"
       ],
@@ -389,7 +389,7 @@
       "id": "29",
       "title": "Иконка, экран запуска, тёмная тема",
       "description": "Визуальная полировка.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "28"
       ],
@@ -402,7 +402,7 @@
       "id": "30",
       "title": "Локализация RU/EN + страница приватности",
       "description": "Интерфейс на двух языках, страница приватности.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "29"
       ],
@@ -415,7 +415,7 @@
       "id": "31",
       "title": "Полный README",
       "description": "Описание, скриншоты, AltStore/Appetize-инструкции, FAQ, дисклеймер, «inspired by TiktokStreakSaver».",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "30"
       ],
@@ -428,7 +428,7 @@
       "id": "32",
       "title": "Выпуск v1.0",
       "description": "Версия 1.0, IPA на GitHub Releases, финальный тег.",
-      "status": "pending",
+      "status": "done",
       "dependencies": [
         "31"
       ],
