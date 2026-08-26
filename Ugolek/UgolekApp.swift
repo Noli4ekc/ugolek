@@ -14,22 +14,11 @@ struct UgolekApp: App {
             AutoRunner.shared.arm()
         }
         // Кнопка 🔥 в шторке: расширение кидает Darwin-сигнал → запускаем прогон.
-        // Если приложение уже в фоне — сработает при пробуждении через openAppWhenRun;
-        // если уже на переднем плане — запустится немедленно.
-        let center = CFNotificationCenterGetDarwinNotifyCenter()
-        CFNotificationCenterAddObserver(
-            center,
-            Unmanaged.passUnretained(self).toOpaque(),
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    RunCoordinator.shared.pendingAutoRun = true
-                    RunCoordinator.shared.consumePendingAutoRunIfNeeded()
-                }
-            },
-            "ugolek.run.requested" as CFString,
-            nil,
-            .deliverImmediately
-        )
+        // Статический обработчик (UgolekApp — struct, Unmanaged не работает).
+        DarwinNotifier.observe("ugolek.run.requested") {
+            RunCoordinator.shared.pendingAutoRun = true
+            RunCoordinator.shared.consumePendingAutoRunIfNeeded()
+        }
     }
 
     var body: some Scene {
