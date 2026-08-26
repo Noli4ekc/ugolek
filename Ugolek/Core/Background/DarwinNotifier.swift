@@ -1,21 +1,20 @@
 import Foundation
 
-/// Обёртка над CFNotificationCenterGetDarwinNotifyCenter для лёгкой подписки
-/// из struct-типов (UgolekApp — struct, Unmanaged требует class).
+/// Обёртка для Darwin-уведомлений.
+/// UgolekApp — struct, а Unmanaged требует class; используем глобальный объект.
+private final class DarwinObserverHost: NSObject {}
+
 enum DarwinNotifier {
-    private static var observerMap: [String: () -> Void] = [:]
+    private static let host = DarwinObserverHost()
+    private static var callbacks: [String: () -> Void] = [:]
 
     static func observe(_ name: String, callback: @escaping () -> Void) {
-        observerMap[name] = callback
-        let center = CFNotificationCenterGetDarwinNotifyCenter()
+        callbacks[name] = callback
         CFNotificationCenterAddObserver(
-            center,
-            Unmanaged.passUnretained(DarwinNotifier.self).toOpaque(),
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            Unmanaged.passUnretained(host).toOpaque(),
             { _, _, _, _, _ in
-                let key = name as String
-                DispatchQueue.main.async {
-                    observerMap[key]?()
-                }
+                DispatchQueue.main.async { callbacks[name]?() }
             },
             name as CFString,
             nil,
