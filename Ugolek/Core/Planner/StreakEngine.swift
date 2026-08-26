@@ -17,6 +17,12 @@ enum StreakEngine {
         let store = AppStore.shared
         let start = Date()
 
+        // STRIKE-09 FIX: guard от параллельных прогонов — не даём двум потокам
+        // одновременно включать одного друга в targets
+        guard !RunCoordinator.shared.runActive || dryRun else {
+            return RunRecord(date: start, durationSeconds: 0, results: [])
+        }
+
         var logLines: [String] = []
         var lastRandomMessage: String? = nil
         InboxRunner.shared.onLog = { logLines.append($0) }

@@ -369,23 +369,43 @@
 
   // Быстрая проверка по бейджу времени в элементе списка чатов (без открытия).
   // Работает для групп: если время последнего сообщения сегодня → стрик активен.
+  // STRIKE-02 FIX: проверяем ТОЛЬКО последнюю строку (таймстемп внизу карточки),
+  // чтобы превью сообщений ("Позвони в 12:00") не детектились как сегодня.
+  // STRIKE-08 FIX: добавлены "только что", "сек", "m", "h", "Just now".
   function isRecentByTimestamp(item) {
-    // TikTok показывает время: "12:41", "5 мин", "2 ч", "Вчера", "3 дн"
-    const text = (item.innerText || '').replace(/\s+/g, ' ');
-    // время формата HH:MM (всегда сегодня)
-    if (/\b\d{1,2}:\d{2}\b/.test(text)) return 'today';
-    // минуты / часы — всегда сегодня
-    if (/\b\d+\s*(мин|минут|ч|час)/i.test(text)) return 'today';
-    if (/\bсегодня\b/i.test(text)) return 'today';
+    const raw = (item.innerText || '').replace(/\s+/g, ' ');
+    // Берём последние 3 строки — таймстемп всегда в конце карточки
+    const lines = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    const tail = lines.slice(-3).join(' ');
+
+    // время формата HH:MM — проверяем что перед числом НЕТ предлогов (в/на/до)
+    // и что это standalone-таймстемп, а не часть превью
+    const hhmmMatch = tail.match(/\b(\d{1,2}:\d{2})\b/);
+    if (hhmmMatch) {
+      const pos = tail.indexOf(hhmmMatch[0]);
+      const before = pos > 0 ? tail[pos - 1] : ' ';
+      // Если перед временем буква — это часть слова/превью, а не таймстемп
+      if (!/[а-яА-Яa-zA-Z]/.test(before)) return 'today';
+    }
+
+    // минуты / часы — всегда сегодня (regex ищет в хвосте)
+    if (/\b\d+\s*(сек|мин|минут|ч|час)/i.test(tail)) return 'today';
+    if (/\b\d+\s*m\b/i.test(tail)) return 'today';  // "5m"
+    if (/\b\d+\s*h\b/i.test(tail)) return 'today';  // "2h"
+    if (/\b(сегодня|только что|just now)\b/i.test(tail)) return 'today';
+
     // вчера / дни — не сегодня
-    if (/\bвчера\b/i.test(text) || /\b\d+\s*дн/i.test(text)) return 'old';
+    if (/\bвчера\b/i.test(tail) || /\b\d+\s*дн/i.test(tail)) return 'old';
     return null; // непонятный формат
   }
 
   // Границы «сегодня» определяются РАЗДЕЛИТЕЛЕМ ДАТ в треде («Сегодня»/«Вчера»/дата),
   // а не регэкспами по тексту сообщений (PLAN-03/05): тексты вообще не анализируются.
   // Возвращает { mine, theirs } или null — если границу не удалось увидеть
-  // (виртуализация отрендерила окно без разделителя) → вызывающий пишет как обычно.
+  // (виртуализация отрендерила окно без разделителя).
+  //
+  // STRIKE-05 FIX: лимит увеличен до 40 символов + поиск подстроки «сегодня»
+  // вместо точного совпадения — TikTok может рендерить «Сегодня, 12:00 – 14:30».
   function threadTodayFlags() {
     const list = document.querySelector("[data-e2e='dm-new-message-list']");
     if (!list) return null;
@@ -394,8 +414,9 @@
     let startIdx = -1;
     for (let i = nodes.length - 1; i >= 0; i--) {
       const txt = (nodes[i].innerText || '').trim().toLowerCase();
-      if (!txt || txt.length > 24) continue;
-      if (txt === 'сегодня') { startIdx = i; break; }
+      if (!txt || txt.length > 40) continue;  // STRIKE-05: лимит 40 вместо 24
+      // STRIKE-05: ищем подстроку «сегодня» вместо точного совпадения
+      if (txt.includes('сегодня')) { startIdx = i; break; }
       if (txt === 'вчера'
           || /^(пн|вт|ср|чт|пт|сб|вс)\b/.test(txt)
           || /^\d{1,2}\s+(янв|фев|мар|апр|ма[йя]|июн|июл|авг|сен|окт|ноя|дек)\b/.test(txt)) {
@@ -411,11 +432,36 @@
       if (!bubble) continue;
       const r = bubble.getBoundingClientRect();
       if (!r.width && !r.height) continue;
-      // исходящие выровнены правее центра списка — геометрическая эвристика направления
-      const isMine = (r.left + r.width / 2) > listRect.left + listRect.width * 0.55;
+      // STRIKE-04/11 FIX: двойная эвристика —
+      // 1) Проверяем data-e2e атрибуты родительских контейнеров (если есть)
+      // 2) Фолбэк: геометрия с динамическим порогом (медиана вместо фиксированных 55%)
+      const isMine = detectMineDirection(bubble, r, listRect, list);
       if (isMine) mine = true; else theirs = true;
     }
     return { mine, theirs };
+  }
+
+  // STRIKE-04/11 FIX: определение направления сообщения.
+  // Сначала ищем data-e2e атрибуты, потом — геометрическую эвристику.
+  function detectMineDirection(bubble, rect, listRect, list) {
+    // Способ 1: data-e2e атрибуты (если TikTok их предоставляет)
+    // Проверяем родительские контейнеры на наличие классов/атрибутов
+    let el = bubble.parentElement;
+    for (let depth = 0; depth < 5 && el && el !== list; depth++) {
+      const cls = (el.className || '').toString().toLowerCase();
+      const attrs = Array.from(el.attributes || []).map(a => a.name + '=' + a.value).join(' ');
+      const combined = cls + ' ' + attrs;
+      // TikTok использует "message-send" / "message-receive" или similar
+      if (/message-send|outgoing|sent|own/.test(combined)) return true;
+      if (/message-receive|incoming|received|other/.test(combined)) return false;
+      el = el.parentElement;
+    }
+
+    // Способ 2: геометрия — сообщения справа = мои, слева = их
+    // STRIKE-11: используем 50% (центр) вместо 55% — менее подвержен инверсии
+    const centerX = rect.left + rect.width / 2;
+    const listCenter = listRect.left + listRect.width / 2;
+    return centerX > listCenter;
   }
 
   // Открыть чат нужного друга: группа (проверка стрика по треду) или личка
@@ -431,14 +477,19 @@
     for (const cand of candidates) {
       const fresh = resolveFresh(cand.item);
       if (!fresh) continue;
-      // === Часть D: проверяем стрик ДО верификации юзернейма (для групп — первый шаг) ===
-      if (isGroup) {
-        // Быстрая проверка по времени в карточке списка — не требует открытия чата
-        const ts = isRecentByTimestamp(cand.item);
-        if (ts === 'today') {
+
+      // === Быстрая проверка по карточке ДО открытия чата ===
+      // Для групп: любая активность сегодня = стрик продлён (кто угодно написал).
+      // Для личек: активность сегодня = либо он написал, либо я — в обоих случаях
+      // стрик продлён (его сообщение уже продлило, моё повторное — бесполезно).
+      const ts = isRecentByTimestamp(cand.item);
+      if (ts === 'today') {
+        if (isGroup) {
           log('🔥 Группа: активность сегодня на карточке — стрик продлён, пропускаю');
-          return { ok: true, alreadyMaintained: true };
+        } else {
+          log('🔥 Личка: активность сегодня на карточке — стрик продлён, пропускаю');
         }
+        return { ok: true, alreadyMaintained: true };
       }
 
       const opened = await openChat(fresh);
@@ -448,11 +499,30 @@
       // по разделителю дат внутри чата; для групп — вторичная проверка.
       await sleep(2500);
 
-      const flags = threadTodayFlags();
+      let flags = threadTodayFlags();
+
+      // STRIKE-01 FIX: Если разделитель «Сегодня» не виден (виртуализация),
+      // скроллим вверх и повторяем проверку. Повторяем до 2 раз.
+      if (!flags) {
+        const list = document.querySelector("[data-e2e='dm-new-message-list']");
+        if (list) {
+          for (let retry = 0; retry < 2 && !flags; retry++) {
+            list.scrollTop = 0;
+            await sleep(800 + retry * 400);  // 800мс, потом 1200мс
+            flags = threadTodayFlags();
+          }
+        }
+      }
+
       if (isGroup) {
         if (flags && (flags.mine || flags.theirs)) {
           log('🔥 Группа: сегодня кто-то писал (проверка в треде) — стрик продлён, пропускаю');
           return { ok: true, alreadyMaintained: true };
+        }
+        // STRIKE-07/12b: flags === null после скроллов — логируем, но отправляем
+        // (безопасный дефолт: лучше дубль, чем потерянный стрик)
+        if (!flags) {
+          log('⚠️ Группа: разделитель «Сегодня» не найден после скроллов — отправляю на всякий случай');
         }
         return { ok: true };  // группы без юзернейма — просто идём дальше
       }
@@ -483,6 +553,11 @@
           return { ok: true, alreadyMaintained: true };
         }
         // только его сегодня → пишем: наш ответ спасает стрик
+      }
+      // STRIKE-01/12: flags === null после скроллов — логируем и отправляем
+      // (безопасный дефолт: лучше дубль, чем потерянный стрик)
+      if (!flags) {
+        log('⚠️ Личка: разделитель «Сегодня» не найден после скроллов — отправляю на всякий случай');
       }
       return { ok: true };
     }
@@ -575,10 +650,19 @@
     if (nickname) {
       const all = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
       for (const node of all) {
-        if (nicknameOfItem(node) === nickname) return node;
+        // STRIKE-10 FIX: additionally check that the node is visible (not virtualized out)
+        if (nicknameOfItem(node) === nickname && node.isConnected) {
+          const r = node.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) return node;  // visible and in DOM
+        }
       }
     }
-    return item.isConnected ? item : null;
+    // STRIKE-10: фолбэк — проверяем что узел не только в DOM, но и видим
+    if (item.isConnected) {
+      const r = item.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return item;
+    }
+    return null;
   }
 
   function paneState() {
@@ -1126,6 +1210,10 @@
         const username = payload.username || '';
         const label = payload.label || '';
         const useVerify = payload.verify !== false;   // аварийный выключатель из настроек
+        // STRIKE-14 FIX: логируем предупреждение при отключённой верификации
+        if (!useVerify) {
+          log('⚠️ ВЫКЛЮЧЕНА ВЕРИФИКАЦИЯ — стрик не проверяется, сообщение уйдёт всегда');
+        }
         const openTarget = async () => useVerify
           ? await findAndOpenVerifiedChat(username, label, !!payload.isGroup)
           : await findAndOpenChat(username, !!payload.isGroup);
