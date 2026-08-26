@@ -20,45 +20,52 @@ struct FriendsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    ScreenTitle(
-                        text: "Друзья",
-                        subtitle: store.friends.isEmpty ? "Поддерживай огоньки вместе" : "\(store.friends.count) в твоём круге"
-                    )
+            // .swipeActions работает только внутри List — в ScrollView он мёртв
+            List {
+                ScreenTitle(
+                    text: "Друзья",
+                    subtitle: store.friends.isEmpty ? "Поддерживай огоньки вместе" : "\(store.friends.count) в твоём круге"
+                )
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
 
-                    if store.friends.isEmpty {
-                        EmptyFriendsCard { showingAdd = true }
-                    } else if visible.isEmpty {
-                        NoSearchResultsCard(query: search)
-                    } else {
-                        ForEach(visible) { friend in
-                            FriendRow(friend: friend) { editing = friend }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    Button(role: .destructive) {
-                                        store.delete(friend)
-                                    } label: {
-                                        Label("Удалить", systemImage: "trash")
-                                    }
-                                    if friend.lastSentDay == Day.today() {
-                                        Button("Вернуть в очередь") {
-                                            AppStore.shared.resetSentDay(friend.id)
-                                        }
-                                        .tint(.gray)
-                                    } else {
-                                        Button("Продлили сами") {
-                                            AppStore.shared.markStreakMaintainedToday(friend.id)
-                                        }
-                                        .tint(UiTheme.accent)
-                                    }
+                if store.friends.isEmpty {
+                    EmptyFriendsCard { showingAdd = true }
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                } else if visible.isEmpty {
+                    NoSearchResultsCard(query: search)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                } else {
+                    ForEach(visible) { friend in
+                        FriendRow(friend: friend) { editing = friend }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    store.delete(friend)
+                                } label: {
+                                    Label("Удалить", systemImage: "trash")
                                 }
-                        }
+                                if friend.lastSentDay == Day.today() {
+                                    Button("Вернуть в очередь") {
+                                        AppStore.shared.resetSentDay(friend.id)
+                                    }
+                                    .tint(.gray)
+                                } else {
+                                    Button("Продлили сами") {
+                                        AppStore.shared.markStreakMaintainedToday(friend.id)
+                                    }
+                                    .tint(UiTheme.accent)
+                                }
+                            }
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets())
                     }
                 }
-                .padding(.bottom, 24)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .background(UiTheme.background.ignoresSafeArea())
-            .scrollIndicators(.hidden)
             .searchable(text: $search, prompt: "Поиск друзей")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
