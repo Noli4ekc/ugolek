@@ -23,6 +23,10 @@ xcuserdata/
 .env.*
 .zcode/
 .mcp/
+.claude/
+
+# Планировщик задач (Task Master — локальный, не влияет на сборку)
+.taskmaster/
 
 # Task Master — служебные внутренности (сам tasks.json коммитим)
 .taskmaster/cache/
