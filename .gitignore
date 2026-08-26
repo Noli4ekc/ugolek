@@ -60,3 +60,15 @@ node_modules/
 package.json
 package-lock.json
 tiktok-tools/
+
+# Артефакты моих сессий — документация ревью, тесты, планы (остаются на диске)
+Tests/
+docs/adversarial-review-*.md
+docs/background-modes-plan.md
+docs/handle-verification-plan.md
+docs/control-center-plan.md
+
+# Рабочие файлы пользователя
+tiktok-media/
+vibe-coding-links.md
+vibe-tools/
