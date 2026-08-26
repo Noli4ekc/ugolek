@@ -81,6 +81,8 @@ final class InboxRunner: NSObject {
 
     func send(
         to handle: String,
+        label: String = "",
+        verify: Bool = true,
         message: String,
         isGroup: Bool,
         dryRun: Bool,
@@ -92,6 +94,8 @@ final class InboxRunner: NSObject {
 
         let payload: [String: Any] = [
             "username": handle,
+            "label": label,
+            "verify": verify,
             "message": message,
             "isGroup": isGroup,
             "dryRun": dryRun,

@@ -267,6 +267,133 @@
     throw new Error('Пользователь не найден в списке чатов');
   }
 
+  // ==== Верификация получателя (план handle-verification, часть A) ====
+
+  function rankOf(item, h, l, isGroup) {
+    const nickname = nicknameOfItem(item).toLowerCase();
+    const title = itemTitle(item).toLowerCase();
+    if (isGroup) {
+      if (nickname === h || title === h) return 1;
+      if (fuzzyMatch(h, nickname) || fuzzyMatch(h, title)) return 3;
+      return 99;
+    }
+    const handleAttr = handleFromItem(item); // почти всегда null — ок
+    if (handleAttr === h || nickname === h || title === h) return 1;
+    if (l && (nickname === l || title === l)) return 2;
+    if (fuzzyMatch(h, nickname) || fuzzyMatch(h, title)) return 3;
+    if (l && (fuzzyMatch(l, nickname) || fuzzyMatch(l, title))) return 4;
+    return 99;
+  }
+
+  // Один проход скролла, обе иглы сразу: юзернейм (ранги 1/3) и имя (ранги 2/4).
+  // Второго прохода нет — худший случай укладывается в таймаут отправки (PLAN-08).
+  async function collectCandidates(h, l, isGroup) {
+    let list = await waitForChatList();
+    if (!list) throw new Error('Список чатов не появился за 15 секунд');
+
+    const target = scrollTargetFor();
+    if (target.scrollTop > 0) {
+      nudgeScroll(target, -target.scrollTop);
+      await sleep(800);
+    }
+
+    const found = [];
+    const seen = new Set();
+
+    for (let step = 0; step <= CFG.scrollMaxSteps; step++) {
+      for (const item of list.items) {
+        const rank = rankOf(item, h, l, isGroup);
+        if (rank > 4) continue;
+        const key = item.getAttribute('data-conv-id')
+          || (nicknameOfItem(item) + '|' + itemTitle(item));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({ item, rank });       // ранг 1 лучше 2 лучше 3 лучше 4
+      }
+
+      const before = target.scrollTop;
+      // шаг — ТОЛЬКО рабочая формула из основного поиска (PLAN-01), не CFG.scrollStep
+      nudgeScroll(target, target.clientHeight ? target.clientHeight * 0.7 : 400);
+      await sleep(CFG.scrollStepMs);
+
+      const refreshed = chatList();
+      if (refreshed) list = refreshed;
+
+      // упёрлись в низ списка — кандидатов больше не будет
+      if (target.scrollTop === before || target.scrollTop >= target.scrollHeight - target.clientHeight - 5) {
+        const allItems = document.querySelectorAll("[data-e2e='dm-new-conversation-item']");
+        const lastItem = allItems[allItems.length - 1];
+        if (lastItem) {
+          try { lastItem.scrollIntoView({ block: 'end' }); } catch (e) {}
+          await sleep(800);
+          const refreshed2 = chatList();
+          if (refreshed2) list = refreshed2;
+        }
+        if (target.scrollTop === before) break;
+      }
+    }
+
+    found.sort((a, b) => a.rank - b.rank);
+    log('Кандидаты: ' + (found.map((c) => 'rank' + c.rank).join(',') || 'нет'));
+    return found;
+  }
+
+  // Юзернейм виден только в открытой панели. Три стратегии чтения (PLAN-07).
+  function handleFromOpenChat() {
+    const scope = document.querySelector("[data-e2e='dm-new-chatbox']")
+      || document.querySelector("[data-e2e='inbox-content']")
+      || document.body;
+    // 1) прямая ссылка на профиль внутри панели
+    const link = scope.querySelector("a[href*='/@']");
+    if (link) {
+      const m = link.getAttribute('href').match(/@([^/?#]+)/);
+      if (m) return m[1].toLowerCase();
+    }
+    // 2) текстовый узел ровно вида "@login" (шапка чата часто показывает юз текстом)
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const t = (node.textContent || '').trim();
+      const m = t.match(/^@([A-Za-z0-9._]{2,30})$/);
+      if (m) return m[1].toLowerCase();
+    }
+    return null; // не смогли — кандидат будет пропущен, вслепую не пишем
+  }
+
+  // Открыть чат нужного друга с проверкой юзернейма по открытой панели.
+  // Бросает «…не найден…» — такие ошибки НЕ повторяются второй попыткой.
+  async function findAndOpenVerifiedChat(username, label, isGroup) {
+    const wanted = String(username).toLowerCase();
+    const candidates = await collectCandidates(wanted, String(label || '').toLowerCase(), isGroup);
+    if (!candidates.length) throw new Error('Друг не найден в списке чатов');
+
+    let unverifiable = 0;
+    for (const cand of candidates) {
+      const fresh = resolveFresh(cand.item);           // защита от React-перерисовки (PLAN-06)
+      if (!fresh) continue;
+      const opened = await openChat(fresh);
+      if (!opened) continue;
+
+      if (isGroup) return { ok: true };
+
+      const actual = handleFromOpenChat();
+      if (!actual) {
+        unverifiable++;
+        log('Не смог прочитать юзернейм открытого чата — кандидат пропущен');
+        continue;                                      // вслепую не пишем
+      }
+      if (actual !== wanted) {
+        log('Юзернейм не совпал: ожидался ' + wanted + ', открылся ' + actual + ' — пробую следующего');
+        continue;                                      // панель переключится при открытии следующего
+      }
+      log('Юзернейм совпал: ' + actual);
+      return { ok: true };
+    }
+    throw new Error('Друг не найден: ни один кандидат не прошёл верификацию'
+      + (unverifiable ? ' (непроверяемых: ' + unverifiable + ')' : '')
+      + ' — если это массово, выключи «Проверять получателя» в настройках');
+  }
+
   function keyboardClick(el) {
     const options = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
     el.dispatchEvent(new KeyboardEvent('keydown', options));
@@ -879,10 +1006,17 @@
       CFG.pollMs = 200;
     }
         const username = payload.username || '';
+        const label = payload.label || '';
+        const useVerify = payload.verify !== false;   // аварийный выключатель из настроек
+        const openTarget = async () => useVerify
+          ? await findAndOpenVerifiedChat(username, label, !!payload.isGroup)
+          : await findAndOpenChat(username, !!payload.isGroup);
         try {
           log('Прогон: hasFocus=' + document.hasFocus());
-          log('Ищу чат: ' + username);
-      await findAndOpenChat(username, !!payload.isGroup);
+          log('Ищу чат: ' + username
+            + (useVerify ? ' [верификация вкл]' : '')
+            + (label ? ' (имя: ' + label + ')' : ''));
+      await openTarget();
 
       if (payload.dryRun) {
         log('Пробный режим: чат открыт, отправка пропущена');
@@ -896,7 +1030,7 @@
         try {
           if (attempt > 1) {
             log('Повторная попытка: открываю чат заново');
-            await findAndOpenChat(username, !!payload.isGroup);
+            await openTarget();
           }
           await typeMessage(payload.message || '');
           await clickSend();
@@ -913,6 +1047,8 @@
         } catch (err) {
           lastError = err;
           log('Попытка ' + attempt + ' не удалась: ' + String((err && err.message) || err));
+          // «не найден» — поиском не лечится, вторая попытка бессмысленна
+          if (/не найден/i.test(String((err && err.message) || err))) break;
         }
       }
       if (!delivered) throw lastError;

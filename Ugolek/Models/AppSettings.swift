@@ -9,11 +9,12 @@ struct AppSettings: Codable, Equatable {
     var messageOnlyWithFlame: Bool = true
     var fastMode: Bool = false
     var geoAlwaysAuto: Bool = false
+    var recipientVerification: Bool = true
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case messageText, dailyHour, dailyMinute, useRandomMessages, skipUnreachable, messageOnlyWithFlame, fastMode, geoAlwaysAuto
+        case messageText, dailyHour, dailyMinute, useRandomMessages, skipUnreachable, messageOnlyWithFlame, fastMode, geoAlwaysAuto, recipientVerification
     }
 
     init(from decoder: Decoder) throws {
@@ -27,5 +28,6 @@ struct AppSettings: Codable, Equatable {
         messageOnlyWithFlame = try c.decodeIfPresent(Bool.self, forKey: .messageOnlyWithFlame) ?? true
         fastMode = try c.decodeIfPresent(Bool.self, forKey: .fastMode) ?? false
         geoAlwaysAuto = try c.decodeIfPresent(Bool.self, forKey: .geoAlwaysAuto) ?? false
+        recipientVerification = try c.decodeIfPresent(Bool.self, forKey: .recipientVerification) ?? true
     }
 }

@@ -55,6 +55,8 @@ enum StreakEngine {
                 : store.settings.messageText
             let reply = await InboxRunner.shared.send(
                 to: friend.handle,
+                label: friend.label,
+                verify: store.settings.recipientVerification,
                 message: outgoingMessage,
                 isGroup: friend.isGroup,
                 dryRun: dryRun,
