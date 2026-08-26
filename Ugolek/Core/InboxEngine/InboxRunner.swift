@@ -180,6 +180,13 @@ final class InboxRunner: NSObject {
         return obj["nickname"] as? String
     }
 
+    /// Последний фолбэк для редактора: грузим движок (если ещё не загружен) и читаем ник.
+    /// nil — нет входа в TikTok либо страница не загрузилась.
+    func fetchProfileNicknameAfterEnsure(handle: String) async -> String? {
+        guard (try? await ensureLoaded()) != nil else { return nil }
+        return await fetchProfileNickname(handle: handle)
+    }
+
     func chatProbe() async -> String {
         guard let webView else { return "Движок ещё не загружался" }
         _ = try? await webView.evaluateJavaScript("Ugolek.openFirstChat()")

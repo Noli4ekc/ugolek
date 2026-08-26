@@ -94,7 +94,8 @@ enum StreakEngine {
                     freshNick = await InboxRunner.shared.fetchProfileNickname(handle: friend.handle)
                     // Фолбэк 2: свежий offscreen-браузер грузит профиль целиком
                     if freshNick == nil {
-                        freshNick = await ProfileWebFetcher.shared.fetchNickname(handle: friend.handle)
+                        let web = await ProfileWebFetcher.shared.fetchNickname(handle: friend.handle)
+                        if let fresh = web.nickname { freshNick = fresh } else { profileDiag += " → " + web.diag }
                     }
                 case .missing(let diag):
                     profileDiag = diag

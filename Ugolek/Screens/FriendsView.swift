@@ -288,10 +288,21 @@ struct FriendEditor: View {
 
             // Прямой запрос заблокирован анти-ботом — пробуем настоящим WebView
             if freshNick == nil, !Task.isCancelled {
-                if let fresh = await ProfileWebFetcher.shared.fetchNickname(handle: clean) {
+                let web = await ProfileWebFetcher.shared.fetchNickname(handle: clean)
+                if let fresh = web.nickname {
                     freshNick = fresh
                 } else {
-                    diag += " → webview: данных нет"
+                    diag += " → " + web.diag
+                }
+            }
+
+            // Последний слой: полный движок — залогиненный WebView гарантированно
+            // грузит TikTok (на нём работает вся рассылка)
+            if freshNick == nil, !Task.isCancelled {
+                if let fresh = await InboxRunner.shared.fetchProfileNicknameAfterEnsure(handle: clean) {
+                    freshNick = fresh
+                } else {
+                    diag += " → движок: нет входа/не загрузился"
                 }
             }
 
