@@ -53,7 +53,7 @@ struct OnboardingDemo: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(UiTheme.background.ignoresSafeArea())
-        .onTapGesture { withAnimation { page.toggle() } }
+        .onTapGesture { withAnimation { page = page == 0 ? 1 : 0 } }
     }
 }
 

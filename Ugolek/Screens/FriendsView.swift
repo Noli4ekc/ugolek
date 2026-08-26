@@ -262,7 +262,6 @@ struct FriendEditor: View {
                         case .checking:
                             Label("Смотрю профиль…", systemImage: "hourglass")
                                 .foregroundStyle(.secondary)
-                                .symbolEffect(.rotate, options: .repeating)
                         case .found:
                             Label("Имя распознано: \(autoFilledLabel ?? "")", systemImage: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
