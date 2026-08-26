@@ -8,7 +8,17 @@ struct MaintainStreaksIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        #if !WIDGET_EXTENSION
+        #if WIDGET_EXTENSION
+        // Расширение не может использовать RunCoordinator (нет WebKit),
+        // но кидает сигнал живому процессу через Darwin-уведомление.
+        // Приложение, открываясь через openAppWhenRun, ловит его и запускает прогон.
+        let center = CFNotificationCenterGetDarwinNotifyCenter()
+        CFNotificationCenterPostNotification(
+            center,
+            CFNotificationName("ugolek.run.requested" as CFString),
+            nil, nil, true
+        )
+        #else
         RunCoordinator.shared.start()
         #endif
         return .result()
