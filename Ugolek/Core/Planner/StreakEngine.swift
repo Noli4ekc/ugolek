@@ -90,9 +90,12 @@ enum StreakEngine {
                     if fresh != friend.label { freshNick = fresh }
                 case .blocked(let diag):
                     profileDiag = diag
-                    // Фолбэк: тот же залогиненный WebView делает same-origin fetch —
-                    // неотличимо от браузера, бот-фильтр не срабатывает
+                    // Фолбэк 1: тот же залогиненный WebView делает same-origin fetch
                     freshNick = await InboxRunner.shared.fetchProfileNickname(handle: friend.handle)
+                    // Фолбэк 2: свежий offscreen-браузер грузит профиль целиком
+                    if freshNick == nil {
+                        freshNick = await ProfileWebFetcher.shared.fetchNickname(handle: friend.handle)
+                    }
                 case .missing(let diag):
                     profileDiag = diag
                 }

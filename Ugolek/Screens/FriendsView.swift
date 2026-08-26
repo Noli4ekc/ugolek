@@ -274,22 +274,37 @@ struct FriendEditor: View {
         nickTask = Task {
             try? await Task.sleep(for: .milliseconds(800))   // debounce
             guard !Task.isCancelled else { return }
+
+            var freshNick: String?
+            var diag = ""
             switch await ProfileFetcher.fetch(handle: clean) {
             case .found(let fresh):
-                guard !Task.isCancelled else { return }
+                freshNick = fresh
+            case .blocked(let why):
+                diag = "urlsession: " + why
+            case .missing(let why):
+                diag = "urlsession: " + why
+            }
+
+            // Прямой запрос заблокирован анти-ботом — пробуем настоящим WebView
+            if freshNick == nil, !Task.isCancelled {
+                if let fresh = await ProfileWebFetcher.shared.fetchNickname(handle: clean) {
+                    freshNick = fresh
+                } else {
+                    diag += " → webview: данных нет"
+                }
+            }
+
+            guard !Task.isCancelled else { return }
+            if let fresh = freshNick {
                 nickState = .found
                 autoFilledLabel = fresh
                 // перезаписываем только пустую метку или своё же прежнее авто-значение
                 if label.isEmpty || label == autoFilledLabel {
                     label = fresh
                 }
-            case .blocked(let diag):
-                guard !Task.isCancelled else { return }
+            } else {
                 nickState = .blocked
-                nickDiag = diag
-            case .missing(let diag):
-                guard !Task.isCancelled else { return }
-                nickState = .missing
                 nickDiag = diag
             }
         }
