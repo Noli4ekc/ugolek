@@ -191,52 +191,79 @@ final class InboxRunner: NSObject {
             return (nil, "не удалось открыть инбокс TikTok — вероятно, нужен повторный вход")
         }
         var nick = await fetchProfileNickname(handle: handle)
+        var navWhy = "профиль не отдал данные за 20с"
         if nick == nil {
-            nick = await fetchProfileNicknameByNavigation(handle: handle)
+            let nav = await fetchProfileNicknameByNavigation(handle: handle)
+            if let n = nav.nick {
+                nick = n
+            } else {
+                navWhy = nav.reason
+            }
         }
         if !wasKey { webView?.resignFirstResponder() }
         if let nick = nick { return (nick, "") }
-        return (nil, "TikTok не отдал автоподстановку имени (бот-фильтр). Впиши имя вручную")
+        return (nil, "автоподстановка не смогла прочитать профиль (" + navWhy + "). Впиши имя вручную")
     }
 
-    private func fetchProfileNicknameByNavigation(handle: String) async -> String? {
-        guard let webView else { return nil }
+    private func fetchProfileNicknameByNavigation(handle: String) async -> (nick: String?, reason: String) {
+        guard let webView else { return (nil, "движок не загружен") }
         let safe = handle.filter { $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" }
-        guard !safe.isEmpty, let url = URL(string: "https://www.tiktok.com/@\\(safe)") else { return nil }
+        guard !safe.isEmpty, let url = URL(string: "https://www.tiktok.com/@\(safe)") else {
+            return (nil, "недопустимый username")
+        }
         webView.load(URLRequest(url: url))
         let js = """
         (function(){
           var low = '\(safe)'.toLowerCase();
           var h = (document.documentElement.outerHTML || '').replace(/\\s+/g, ' ');
-          var key = '"uniqueId":"' + low + '"';
-          var i = h.indexOf(key);
-          if (i < 0) return JSON.stringify({ nickname: null });
-          var seg = h.slice(Math.max(0, i - 300), i + 900);
-          var ns = '"nickname":"';
-          var j = seg.indexOf(ns);
-          if (j < 0) return JSON.stringify({ nickname: null });
-          var s = j + ns.length;
-          var e = seg.indexOf('"', s);
-          return JSON.stringify({ nickname: seg.slice(s, e) });
+          var size = h.length;
+          var path = location.pathname;
+          // капча/логин/чек-страницы не содержат данных профиля — честно скажем
+          if (/login|captcha|passcode|recovery|help/.test(path)) {
+            return JSON.stringify({ nickname: null, why: 'redirect:' + path, size: size });
+          }
+          var re = /"uniqueId"\\s*:\\s*"([^"]+)"/g;
+          var m, seg = null;
+          while ((m = re.exec(h)) !== null) {
+            if (m[1].toLowerCase() === low) {
+              seg = h.slice(Math.max(0, m.index - 300), m.index + 900);
+              break;
+            }
+          }
+          if (seg === null) {
+            return JSON.stringify({ nickname: null, why: 'no-uniqueId', size: size, path: path });
+          }
+          var nm = /"nickname"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"/.exec(seg);
+          if (!nm) return JSON.stringify({ nickname: null, why: 'no-nickname-near', size: size, path: path });
+          var nick = nm[1]
+            .replace(/\\\\u([0-9a-fA-F]{4})/g, function (_, hh) { return String.fromCharCode(parseInt(hh, 16)); })
+            .replace(/\\\\\"/g, '"').replace(/\\\\\\//g, '/');
+          return JSON.stringify({ nickname: nick, why: 'ok', size: size, path: path });
         })()
         """
         let deadline = Date().addingTimeInterval(20)
-        var found: String?
+        var nick: String?
+        var reason = "профиль не отдал данные за 20с"
         while Date() < deadline {
             try? await Task.sleep(for: .milliseconds(900))
-            if let raw = try? await webView.evaluateJavaScript(js) as? String,
-               let data = raw.data(using: .utf8),
-               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let n = obj["nickname"] as? String, !n.isEmpty {
-                found = n
+            guard let raw = try? await webView.evaluateJavaScript(js) as? String,
+                  let data = raw.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            if let w = obj["why"] as? String { reason = w }
+            if let n = obj["nickname"] as? String, !n.isEmpty {
+                nick = n
                 break
             }
         }
+        // Возвращаем движок в инбокс. loadedURL сбрасываем: следующий ensureLoaded
+        // перезагрузит именно инбокс, а не чужую страницу профиля (иначе рассылка
+        // стартовала бы на странице профиля).
         if let msg = URL(string: "https://www.tiktok.com/messages?lang=en") {
             webView.load(URLRequest(url: msg))
-            try? await Task.sleep(for: .seconds(1))
         }
-        return found
+        loadedURL = nil
+        try? await Task.sleep(for: .milliseconds(300))
+        return (nick, reason)
     }
 
     func chatProbe() async -> String {
