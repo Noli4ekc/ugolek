@@ -381,23 +381,17 @@ struct FriendEditor: View {
                 wasMissing = true
             }
 
-            // Прямой запрос заблокирован анти-ботом — пробуем настоящим WebView
+            // Прямой запрос заглушен бот-фильтром, и fetch-фолбэки тоже (TikTok
+            // отдаёт им заглушку ~1462 байта). Решает движок: залогиненный WebView
+            // грузит профиль НАВИГАЦИЕЙ (те же куки и браузерный TLS, что у рассылки),
+            // а не fetch. «Чистый» WebView без кук (ProfileWebFetcher) убран из
+            // каскада: он упирался в тот же бот-фильтр и сжигал ~25 секунд на ввод.
             if freshNick == nil, !Task.isCancelled {
-                let web = await ProfileWebFetcher.shared.fetchNickname(handle: clean)
-                if let fresh = web.nickname {
+                let res = await InboxRunner.shared.fetchProfileNicknameAfterEnsure(handle: clean)
+                if let fresh = res.nick {
                     freshNick = fresh
                 } else {
-                    diag += " → " + web.diag
-                }
-            }
-
-            // Последний слой: полный движок — залогиненный WebView гарантированно
-            // грузит TikTok (на нём работает вся рассылка)
-            if freshNick == nil, !Task.isCancelled {
-                if let fresh = await InboxRunner.shared.fetchProfileNicknameAfterEnsure(handle: clean) {
-                    freshNick = fresh
-                } else {
-                    diag += " → движок: нет входа/не загрузился"
+                    diag = "движок: " + res.reason
                 }
             }
 

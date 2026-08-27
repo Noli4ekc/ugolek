@@ -184,12 +184,59 @@ final class InboxRunner: NSObject {
     /// makeKey: false — редактор не должен терять клавиатуру из-за скрытого окна (NICK-01).
     /// После чтения отпускаем first responder, если окно не было key до этого.
     /// nil — нет входа в TikTok либо страница не загрузилась.
-    func fetchProfileNicknameAfterEnsure(handle: String) async -> String? {
+    func fetchProfileNicknameAfterEnsure(handle: String) async -> (nick: String?, reason: String) {
         let wasKey = window?.isKeyWindow ?? false
-        guard (try? await ensureLoaded(makeKey: false)) != nil else { return nil }
-        let nick = await fetchProfileNickname(handle: handle)
+        guard (try? await ensureLoaded(makeKey: false)) != nil else {
+            if !wasKey { webView?.resignFirstResponder() }
+            return (nil, "не удалось открыть инбокс TikTok — вероятно, нужен повторный вход")
+        }
+        var nick = await fetchProfileNickname(handle: handle)
+        if nick == nil {
+            nick = await fetchProfileNicknameByNavigation(handle: handle)
+        }
         if !wasKey { webView?.resignFirstResponder() }
-        return nick
+        if let nick = nick { return (nick, "") }
+        return (nil, "TikTok не отдал автоподстановку имени (бот-фильтр). Впиши имя вручную")
+    }
+
+    private func fetchProfileNicknameByNavigation(handle: String) async -> String? {
+        guard let webView else { return nil }
+        let safe = handle.filter { $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" }
+        guard !safe.isEmpty, let url = URL(string: "https://www.tiktok.com/@\\(safe)") else { return nil }
+        webView.load(URLRequest(url: url))
+        let js = """
+        (function(){
+          var low = '\(safe)'.toLowerCase();
+          var h = (document.documentElement.outerHTML || '').replace(/\\s+/g, ' ');
+          var key = '"uniqueId":"' + low + '"';
+          var i = h.indexOf(key);
+          if (i < 0) return JSON.stringify({ nickname: null });
+          var seg = h.slice(Math.max(0, i - 300), i + 900);
+          var ns = '"nickname":"';
+          var j = seg.indexOf(ns);
+          if (j < 0) return JSON.stringify({ nickname: null });
+          var s = j + ns.length;
+          var e = seg.indexOf('"', s);
+          return JSON.stringify({ nickname: seg.slice(s, e) });
+        })()
+        """
+        let deadline = Date().addingTimeInterval(20)
+        var found: String?
+        while Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(900))
+            if let raw = try? await webView.evaluateJavaScript(js) as? String,
+               let data = raw.data(using: .utf8),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let n = obj["nickname"] as? String, !n.isEmpty {
+                found = n
+                break
+            }
+        }
+        if let msg = URL(string: "https://www.tiktok.com/messages?lang=en") {
+            webView.load(URLRequest(url: msg))
+            try? await Task.sleep(for: .seconds(1))
+        }
+        return found
     }
 
     func chatProbe() async -> String {

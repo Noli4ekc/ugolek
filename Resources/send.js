@@ -1181,21 +1181,39 @@
   }
 
   // Часть B фолбэк: ник из профиля через same-origin fetch (куки + браузерный TLS).
-  // Возвращает JSON-строку {found:bool, nickname?:string, why?:string}.
+  // Если бот-фильтр отдал заглушку — возвращаем {found:false,...}, и Swift-сторона
+  // для редактора догрузит профиль навигацией (fetchProfileNicknameByNavigation).
+  function nickFromHtml(html, handle) {
+    const low = handle.toLowerCase();
+    const re = /"uniqueId"\s*:\s*"([^"]+)"/g;   // допускаем пробелы вокруг ":"
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      if (m[1].toLowerCase() === low) {
+        const start = Math.max(0, m.index - 300);
+        const seg = html.slice(start, m.index + 900);
+        const nm = seg.match(/"nickname"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+        if (nm) {
+          return nm[1]
+            .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+            .replace(/\\"/g, '"').replace(/\\\//g, '/');
+        }
+        return '';
+      }
+    }
+    return null;
+  }
+
   async function profileNickname(handle) {
     try {
       const res = await fetch('/@' + encodeURIComponent(handle), { credentials: 'include' });
-      if (!res.ok) return JSON.stringify({ found: false, why: 'http' + res.status });
       const t = await res.text();
-      const i = t.indexOf('"uniqueId":"' + handle.toLowerCase() + '"');
-      if (i < 0) return JSON.stringify({ found: false, why: 'no-uniqueId', size: t.length });
-      const seg = t.slice(Math.max(0, i - 300), i + 900);
-      const m = seg.match(/"nickname"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      if (!m) return JSON.stringify({ found: false, why: 'no-nickname-near' });
-      let nick = m[1]
-        .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
-        .replace(/\\"/g, '"').replace(/\\\//g, '/');
-      return JSON.stringify({ found: true, nickname: nick });
+      if (res.ok) {
+        const nick = nickFromHtml(t, handle);
+        if (nick) return JSON.stringify({ found: true, nickname: nick });
+        if (nick === '') return JSON.stringify({ found: false, why: 'no-nickname-near', size: t.length });
+        return JSON.stringify({ found: false, why: 'no-uniqueId', size: t.length });
+      }
+      return JSON.stringify({ found: false, why: 'http' + res.status, size: t.length });
     } catch (e) {
       return JSON.stringify({ found: false, why: String(e).slice(0, 80) });
     }
