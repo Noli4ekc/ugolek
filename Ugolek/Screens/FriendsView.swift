@@ -40,23 +40,9 @@ struct FriendsView: View {
                 } else {
                     ForEach(visible) { friend in
                         FriendRow(friend: friend) { editing = friend }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    store.delete(friend)
-                                } label: {
+                             label: {
                                     Label("Удалить", systemImage: "trash")
-                                }
-                                if friend.lastSentDay == Day.today() {
-                                    Button("Вернуть в очередь") {
-                                        AppStore.shared.resetSentDay(friend.id)
-                                    }
-                                    .tint(.gray)
                                 } else {
-                                    Button("Продлили сами") {
-                                        AppStore.shared.markStreakMaintainedToday(friend.id)
-                                    }
-                                    .tint(UiTheme.accent)
-                                }
                             }
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets())

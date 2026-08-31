@@ -75,8 +75,7 @@ enum StreakEngine {
 
             // Часть D: JS сверил юзернейм и увидел «сегодня уже писали оба» — пропускаем без отправки
             if reply.alreadyMaintained == true {
-                if !dryRun { AppStore.shared.markStreakMaintainedToday(friend.id) }
-                results.append(FriendResult(
+                                results.append(FriendResult(
                     friendId: friend.id,
                     handle: friend.handle,
                     status: .skipped,
@@ -127,8 +126,7 @@ enum StreakEngine {
                         fast: store.settings.fastMode
                     )
                     if retry.alreadyMaintained == true {
-                        if !dryRun { AppStore.shared.markStreakMaintainedToday(friend.id) }
-                        results.append(FriendResult(
+                                                results.append(FriendResult(
                             friendId: friend.id, handle: friend.handle,
                             status: .skipped, detail: "🔥 уже продлён сегодня"
                         ))

@@ -113,19 +113,10 @@ final class AppStore {
     }
 
     /// Часть D/E: отметить «стрик продлён сегодня» без отправки.
-    func markStreakMaintainedToday(_ id: UUID) {
-        guard let i = friends.firstIndex(where: { $0.id == id }) else { return }
-        friends[i].lastSentDay = Day.today()
-        persist(.friends)
-    }
+
 
     /// Часть E: снять ручную отметку (вернуть друга в очередь).
-    func resetSentDay(_ id: UUID) {
-        guard let i = friends.firstIndex(where: { $0.id == id }),
-              friends[i].lastSentDay != nil else { return }
-        friends[i].lastSentDay = nil
-        persist(.friends)
-    }
+
 
     /// Битый файл не затираем молча: уводим в карантин рядом с оригиналом,
     /// чтобы данные можно было вытащить руками, а следующий persist начал с чистого листа.
