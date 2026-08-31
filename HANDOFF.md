@@ -169,3 +169,28 @@ iOS-приложение **«Уголёк» (Ugolek)** — автоматиче�
 - **NICK-08/09**: raw-фолбэк стал регистронезависимым и корректно парсит `\"` внутри ника.
 - **NICK-11**: Part B обновляет label по СВЕЖЕЙ копии из AppStore, а не по snapshot'у из цикла.
 - **NICK-12**: переключение на группу сбрасывает ник-статус.
+
+## Откат на стабильный коммит и удаление фона (2026-08-31)
+
+Основная ветка `main` откачена на `05dcc88` — последний стабильный коммит, где отправка
+работает надёжно, а фоновые режимы удалены из-за невозможности стабильной работы на
+iPhone без джейлбрейка.
+
+### Что удалено
+- `LocationKeeper.swift` — гео-держатель (acquire/release/persistent/watchdog)
+- `AutoRunner.swift` — планировщик авто-прогона (±15 мин джиттер)
+- `DarwinNotifier.swift` — Darwin-уведомления (сигнал расширения → приложение)
+- `HeadlessStreaksIntent.swift` — фоновый интент для Команд (openAppWhenRun=false)
+- Все ссылки: geoAlwaysAuto, geoPermissionRevoked, markStreakMaintainedToday, resetSentDay
+- Тумблеры: «Гео всегда», swipe «Продлили/Вернуть в очередь»
+
+### Что осталось
+- Отправка сообщений через скрытый WKWebView
+- Верификация получателя (handleFromOpenChat, checkedHandles)
+- Автоопределение имени из профиля TikTok (ProfileFetcher + engine navigation)
+- Пропуск уже продлённых (threadTodayFlags + isRecentByTimestamp)
+- Рандомные фразы, ретраи, пропуск недоступных
+- Тумблер «Проверять получателя» (recipientVerification)
+
+### Установка IPA на Fedora Linux
+См. INSTALL_LINUX.md — инструменты: zsign (подпись) + pymobiledevice3 (установка).
