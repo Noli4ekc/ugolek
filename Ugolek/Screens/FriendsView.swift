@@ -40,9 +40,12 @@ struct FriendsView: View {
                 } else {
                     ForEach(visible) { friend in
                         FriendRow(friend: friend) { editing = friend }
-                             label: {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    store.delete(friend)
+                                } label: {
                                     Label("Удалить", systemImage: "trash")
-                                } else {
+                                }
                             }
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets())
