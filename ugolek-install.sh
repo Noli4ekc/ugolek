@@ -220,8 +220,17 @@ install_free() {
     elif command -v docker-compose >/dev/null 2>&1; then
         DC="docker-compose"
     else
-        err "docker compose не найден. Установи: sudo dnf install docker-compose"
-        exit 1
+        warn "docker compose не найден. Устанавливаю..."
+        sudo dnf install -y docker-compose-plugin 2>/dev/null || sudo dnf install -y docker-compose
+        if docker compose version >/dev/null 2>&1; then
+            DC="docker compose"
+        elif command -v docker-compose >/dev/null 2>&1; then
+            DC="docker-compose"
+        else
+            err "Не удалось установить docker compose"
+            exit 1
+        fi
+        ok "docker compose установлен"
     fi
 
     # Запускаем подпись в Docker
