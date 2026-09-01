@@ -12,35 +12,41 @@ err()  { echo -e "${RED}✗${NC} $1"; }
 step() { echo -e "\n${YELLOW}━━━ $1 ━━━${NC}"; }
 
 # ═══ Выбор способа установки ═══
-echo ""
-echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${CYAN}║           Установка Уголька на iPhone с Linux               ║${NC}"
-echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
-echo -e "${CYAN}║  Доступно два способа:                                      ║${NC}"
-echo -e "${CYAN}║                                                              ║${NC}"
-echo -e "${CYAN}║  ${GREEN}1) Бесплатно${CYAN} — AltServer + бесплатный Apple ID             ║${NC}"
-echo -e "${CYAN}║     Подпись на 7 дней, автопродление с ПК                    ║${NC}"
-echo -e "${CYAN}║     Требует: Docker (anisette-server)                        ║${NC}"
-echo -e "${CYAN}║                                                              ║${NC}"
-echo -e "${CYAN}║  ${YELLOW}2) Платно${CYAN}   — Apple Developer Program ($99/год)          ║${NC}"
-echo -e "${CYAN}║     Подпись на 1 год, без ограничений                        ║${NC}"
-echo -e "${CYAN}║     Трудоёмко: ручная работа с сертификатами                 ║${NC}"
-echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-echo "Какой способ использовать?"
-echo -e "  ${GREEN}1${NC}) Бесплатно (AltServer, 7 дней)"
-echo -e "  ${YELLOW}2${NC}) Платно (Apple Developer, 1 год)"
-echo ""
-read -rp "Выбор [1/2]: " MODE
-
-if [ "$MODE" = "2" ]; then
-    INSTALL_MODE="paid"
-    echo ""
-    echo -e "${YELLOW}Выбран платный способ (Apple Developer Program).${NC}"
-else
+# Флаг --docker-ready: перезапуск после добавления в группу docker (меню не показывать)
+if [ "$1" = "--docker-ready" ]; then
     INSTALL_MODE="free"
+    echo -e "${GREEN}Продолжаем бесплатную установку (группа docker применена).${NC}"
+else
     echo ""
-    echo -e "${GREEN}Выбран бесплатный способ (AltServer + бесплатный Apple ID).${NC}"
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║           Установка Уголька на iPhone с Linux               ║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║  Доступно два способа:                                      ║${NC}"
+    echo -e "${CYAN}║                                                              ║${NC}"
+    echo -e "${CYAN}║  ${GREEN}1) Бесплатно${CYAN} — AltServer + бесплатный Apple ID             ║${NC}"
+    echo -e "${CYAN}║     Подпись на 7 дней, автопродление с ПК                    ║${NC}"
+    echo -e "${CYAN}║     Требует: Docker (anisette-server)                        ║${NC}"
+    echo -e "${CYAN}║                                                              ║${NC}"
+    echo -e "${CYAN}║  ${YELLOW}2) Платно${CYAN}   — Apple Developer Program ($99/год)          ║${NC}"
+    echo -e "${CYAN}║     Подпись на 1 год, без ограничений                        ║${NC}"
+    echo -e "${CYAN}║     Трудоёмко: ручная работа с сертификатами                 ║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "Какой способ использовать?"
+    echo -e "  ${GREEN}1${NC}) Бесплатно (AltServer, 7 дней)"
+    echo -e "  ${YELLOW}2${NC}) Платно (Apple Developer, 1 год)"
+    echo ""
+    read -rp "Выбор [1/2]: " MODE
+
+    if [ "$MODE" = "2" ]; then
+        INSTALL_MODE="paid"
+        echo ""
+        echo -e "${YELLOW}Выбран платный способ (Apple Developer Program).${NC}"
+    else
+        INSTALL_MODE="free"
+        echo ""
+        echo -e "${GREEN}Выбран бесплатный способ (AltServer + бесплатный Apple ID).${NC}"
+    fi
 fi
 
 IPA_DIR="$HOME/Ugolek"
@@ -106,14 +112,17 @@ install_free() {
     if ! docker info >/dev/null 2>&1; then
         # Проверяем состоит ли пользователь в группе docker
         if ! groups | grep -q docker; then
-            err "Пользователь не в группе docker."
+            warn "Для работы anisette-сервера нужна группа docker."
+            echo "Скрипт добавит тебя в группу. Введи пароль суперпользовода:"
             echo ""
-            echo "Выполни в терминале:"
-            echo -e "  ${CYAN}sudo usermod -aG docker \$USER${NC}"
-            echo ""
-            echo "Затем выйди из системы и зайди заново."
-            echo "Потом запусти скрипт снова:"
-            echo "  bash ~/ugolek-install.sh"
+            read -rsp "Пароль: " SUDO_PASS; echo ""
+            echo "$SUDO_PASS" | sudo -S usermod -aG docker "$USER" 2>/dev/null || {
+                err "Неверный пароль или нет прав sudo."
+                exit 1
+            }
+            ok "Группа docker добавлена."
+            # Применяем группу без перезахода
+            exec sg docker -c "bash $0 --docker-ready"
             exit 0
         fi
         # Группа есть но daemon не запущен
