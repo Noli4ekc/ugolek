@@ -178,10 +178,32 @@ install_free() {
 
     # --- Авторизация Apple ID ---
     step "Авторизация Apple ID"
-    echo "Введи данные от бесплатного Apple ID."
-    echo -e "${YELLOW}Внимание:${NC} пароль передаётся напрямую в Apple."
-    read -rp "Email Apple ID: " APPLE_EMAIL
-    read -rsp "Пароль: " APPLE_PASS; echo ""
+    CREDS_FILE="$HOME/.ugolek-credentials"
+    if [ -f "$CREDS_FILE" ]; then
+        # Загружаем сохранённые креды
+        APPLE_EMAIL=$(head -1 "$CREDS_FILE")
+        APPLE_PASS=$(tail -1 "$CREDS_FILE")
+        ok "Используем сохранённый Apple ID: $APPLE_EMAIL"
+        echo "Нажми Enter чтобы использовать его, или введи новый email:"
+        read -rp "> " NEW_EMAIL
+        if [ -n "$NEW_EMAIL" ]; then
+            APPLE_EMAIL="$NEW_EMAIL"
+            read -rsp "Пароль: " APPLE_PASS; echo ""
+            # Сохраняем новые креды
+            printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" > "$CREDS_FILE"
+            chmod 600 "$CREDS_FILE"
+            ok "Креды сохранены для следующего раза"
+        fi
+    else
+        echo "Введи данные от бесплатного Apple ID."
+        echo -e "${YELLOW}Внимание:${NC} пароль передаётся напрямую в Apple."
+        read -rp "Email Apple ID: " APPLE_EMAIL
+        read -rsp "Пароль: " APPLE_PASS; echo ""
+        # Сохраняем для следующего раза
+        printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" > "$CREDS_FILE"
+        chmod 600 "$CREDS_FILE"
+        ok "Креды сохранены для следующего раза (файл: $CREDS_FILE)"
+    fi
 
     # --- Подпись через ipasideloader в Docker ---
     step "Подпись IPA (бесплатно, 7 дней)"
