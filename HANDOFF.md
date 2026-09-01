@@ -116,7 +116,3 @@ iOS-приложение **«Уголёк» (Ugolek)** — автоматиче�
 - Рандомные фразы, ретраи, пропуск недоступных
 - Тумблер «Проверять получателя» (recipientVerification)
 
-### Установка IPA на Fedora Linux
-См. INSTALL_LINUX.md — два способа:
-- **Бесплатный** (ipasideloader + Docker + бесплатный Apple ID, подпись 7 дней)
-- **Платный** (zsign + pymobiledevice3 + Apple Developer $99/год, подпись 1 год)
