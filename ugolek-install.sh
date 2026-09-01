@@ -214,13 +214,23 @@ install_free() {
     mkdir -p "$WORKDIR"
     cp "$IPA_DIR/Ugolek-unsigned.ipa" "$WORKDIR/"
 
+    # Определяем docker compose v1 или v2
+    if docker compose version >/dev/null 2>&1; then
+        DC="docker compose"
+    elif command -v docker-compose >/dev/null 2>&1; then
+        DC="docker-compose"
+    else
+        err "docker compose не найден. Установи: sudo dnf install docker-compose"
+        exit 1
+    fi
+
     # Запускаем подпись в Docker
-    docker compose -f "$IPALOADER_DIR/docker-compose.yml" build 2>/dev/null || {
+    $DC -f "$IPALOADER_DIR/docker-compose.yml" build 2>/dev/null || {
         warn "Docker build занял время, продолжаю..."
     }
 
     # Подпись с бесплатным Apple ID
-    docker compose -f "$IPALOADER_DIR/docker-compose.yml" run --rm ipasideloader \
+    $DC -f "$IPALOADER_DIR/docker-compose.yml" run --rm ipasideloader \
       sign-install /work/Ugolek-unsigned.ipa \
       --apple-id "$APPLE_EMAIL" \
       --apple-password "$APPLE_PASS" \
