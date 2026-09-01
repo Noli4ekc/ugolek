@@ -43,6 +43,7 @@ bash ~/ugolek-install.sh
 - iPhone с iOS 17+, подключённый по USB
 - Бесплатный Apple ID
 - Docker (скрипт установит если нет)
+- Пользователь в группе `docker` (скрипт добавит и попросит перезайти)
 
 ### Процесс при первом запуске
 
@@ -143,6 +144,7 @@ bash ~/ugolek-install.sh
 
 | Симптом | Решение |
 |---------|---------|
+| `permission denied... docker.sock` | Нет прав на Docker. Скрипт добавит в группу `docker` — перезайди в сессию и запусти заново |
 | `anisette-сервер не запускается` | `docker ps -a`, `docker logs anisette` — проверь логи |
 | Ошибка `-36607` | Неверные anisette-данные, перезапусти anisette: `docker restart anisette` |
 | `AltServer не видит iPhone` | `sudo systemctl restart usbmuxd`, разблокируй iPhone |
