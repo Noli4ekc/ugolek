@@ -178,31 +178,31 @@ install_free() {
 
     # --- Авторизация Apple ID ---
     step "Авторизация Apple ID"
-    CREDS_FILE="$HOME/.ugolek-credentials"
-    if [ -f "$CREDS_FILE" ]; then
-        # Загружаем сохранённые креды
-        APPLE_EMAIL=$(head -1 "$CREDS_FILE")
-        APPLE_PASS=$(tail -1 "$CREDS_FILE")
-        ok "Используем сохранённый Apple ID: $APPLE_EMAIL"
+    # Пробуем загрузить из системного keyring (безопасно, не на диске)
+    CREDS=$(secret-tool lookup service ugolek 2>/dev/null) || true
+    if [ -n "$CREDS" ]; then
+        APPLE_EMAIL=$(echo "$CREDS" | head -1)
+        APPLE_PASS=$(echo "$CREDS" | tail -1)
+        ok "Найден сохранённый Apple ID: $APPLE_EMAIL"
         echo "Нажми Enter чтобы использовать его, или введи новый email:"
         read -rp "> " NEW_EMAIL
         if [ -n "$NEW_EMAIL" ]; then
             APPLE_EMAIL="$NEW_EMAIL"
             read -rsp "Пароль: " APPLE_PASS; echo ""
-            # Сохраняем новые креды
-            printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" > "$CREDS_FILE"
-            chmod 600 "$CREDS_FILE"
-            ok "Креды сохранены для следующего раза"
+            printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" | secret-tool store --label="Ugolek Apple ID" service ugolek 2>/dev/null
+            ok "Креды сохранены в системном keyring"
         fi
     else
         echo "Введи данные от бесплатного Apple ID."
         echo -e "${YELLOW}Внимание:${NC} пароль передаётся напрямую в Apple."
         read -rp "Email Apple ID: " APPLE_EMAIL
         read -rsp "Пароль: " APPLE_PASS; echo ""
-        # Сохраняем для следующего раза
-        printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" > "$CREDS_FILE"
-        chmod 600 "$CREDS_FILE"
-        ok "Креды сохранены для следующего раза (файл: $CREDS_FILE)"
+        # Сохраняем в системный keyring (не на диск!)
+        printf '%s\n%s' "$APPLE_EMAIL" "$APPLE_PASS" | secret-tool store --label="Ugolek Apple ID" service ugolek 2>/dev/null || {
+            warn "Не удалось сохранить в keyring (возможно он заблокирован)"
+            echo "Креды будут запрошены в следующий раз"
+        }
+        ok "Креды сохранены в системном keyring"
     fi
 
     # --- Подпись через ipasideloader в Docker ---
