@@ -17,11 +17,17 @@ RUN git clone https://github.com/zhlynn/zsign.git /tmp/zsign \
 RUN pip3 install --no-cache-dir \
     pymobiledevice3 \
     requests \
-    pycryptodome
+    pycryptodome \
+    pyelftools \
+    unicorn \
+    fs \
+    certifi \
+    urllib3 \
+    typing-extensions
 
-# Install anisette server
+# Install Anisette.py (local anisette provider)
 RUN git clone https://github.com/malmeloo/Anisette.py.git /opt/anisette \
-    || true
+    && cd /opt/anisette && pip3 install -e .
 
 # Copy signing script
 COPY sign.py /usr/local/bin/sign-ipa
