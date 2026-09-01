@@ -94,30 +94,38 @@ install_free() {
         sudo dnf install -y docker
         sudo systemctl enable --now docker
         sudo usermod -aG docker "$USER"
-        ok "Docker установлен. Перезайди в сессию (или newgrp docker) и запусти скрипт заново."
-        echo "Выполни: newgrp docker  — и снова: bash ~/ugolek-install.sh"
+        ok "Docker установлен и пользователь добавлен в группу docker."
+        echo ""
+        echo -e "${YELLOW}Важно:${NC} нужен перезапуск сессии для применения прав."
+        echo "Выйди из системы и зайди заново, потом запусти скрипт снова:"
+        echo "  bash ~/ugolek-install.sh"
         exit 0
     fi
 
     # Проверяем что docker работает и есть права
     if ! docker info >/dev/null 2>&1; then
-        # Проверяем права на socket
-        if [ ! -w /var/run/docker.sock ] 2>/dev/null; then
-            warn "Нет прав доступа к Docker."
-            echo "Добавляю пользователя в группу docker..."
+        # Проверяем состоит ли пользователь в группе docker
+        if ! groups | grep -q docker; then
+            warn "Пользователь не в группе docker. Добавляю..."
             sudo usermod -aG docker "$USER"
-            echo ""
             ok "Группа docker добавлена."
-            echo -e "${YELLOW}Важно:${NC} нужно перезайти в сессию для применения прав."
-            echo "Варианты:"
-            echo "  1) Выйти и зайти заново (рекомендуется)"
-            echo "  2) Выполнить: newgrp docker"
-            echo "  Затем снова: bash ~/ugolek-install.sh"
+            echo ""
+            echo -e "${YELLOW}Важно:${NC} нужен перезапуск сессии для применения прав."
+            echo "Выйди из системы и зайди заново, потом запусти скрипт снова:"
+            echo "  bash ~/ugolek-install.sh"
             exit 0
         fi
+        # Группа есть но нет прав на socket — пробуем sudo
         warn "Docker daemon не запущен. Запускаю..."
         sudo systemctl start docker
         sleep 2
+        # Перепроверяем
+        if ! docker info >/dev/null 2>&1; then
+            err "Docker всё ещё недоступен. Выполни вручную:"
+            echo "  sudo systemctl start docker"
+            echo "  sudo chmod 666 /var/run/docker.sock  # или перезайди в сессию"
+            exit 1
+        fi
     fi
 
     # --- anisette-v3-server ---
