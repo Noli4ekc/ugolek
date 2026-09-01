@@ -106,16 +106,17 @@ install_free() {
     if ! docker info >/dev/null 2>&1; then
         # Проверяем состоит ли пользователь в группе docker
         if ! groups | grep -q docker; then
-            warn "Пользователь не в группе docker. Добавляю..."
-            sudo usermod -aG docker "$USER"
-            ok "Группа docker добавлена."
+            err "Пользователь не в группе docker."
             echo ""
-            echo -e "${YELLOW}Важно:${NC} нужен перезапуск сессии для применения прав."
-            echo "Выйди из системы и зайди заново, потом запусти скрипт снова:"
+            echo "Выполни в терминале:"
+            echo -e "  ${CYAN}sudo usermod -aG docker \$USER${NC}"
+            echo ""
+            echo "Затем выйди из системы и зайди заново."
+            echo "Потом запусти скрипт снова:"
             echo "  bash ~/ugolek-install.sh"
             exit 0
         fi
-        # Группа есть но нет прав на socket — пробуем sudo
+        # Группа есть но daemon не запущен
         warn "Docker daemon не запущен. Запускаю..."
         sudo systemctl start docker
         sleep 2
@@ -123,7 +124,7 @@ install_free() {
         if ! docker info >/dev/null 2>&1; then
             err "Docker всё ещё недоступен. Выполни вручную:"
             echo "  sudo systemctl start docker"
-            echo "  sudo chmod 666 /var/run/docker.sock  # или перезайди в сессию"
+            echo "  sudo chmod 666 /var/run/docker.sock"
             exit 1
         fi
     fi
