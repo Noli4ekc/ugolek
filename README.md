@@ -52,6 +52,13 @@ iOS-приложение, которое автоматически продле
 
 ## Установка
 
+### Через Linux (Fedora)
+
+Два способа — бесплатный и платный. Подробности и скрипт: [INSTALL_LINUX.md](INSTALL_LINUX.md).
+
+- **Бесплатно** — AltServer + бесплатный Apple ID (подпись 7 дней)
+- **Платно** — Apple Developer Program $99/год (подпись 1 год)
+
 ### Через Sideloadly (Windows/macOS)
 
 1. Скачай `Ugolek-unsigned.ipa` из [релизов](https://github.com/Noli4ekc/ugolek/releases/download/rolling/Ugolek-unsigned.ipa).
