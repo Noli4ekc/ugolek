@@ -99,8 +99,22 @@ install_free() {
         exit 0
     fi
 
-    # Проверяем что docker работает
+    # Проверяем что docker работает и есть права
     if ! docker info >/dev/null 2>&1; then
+        # Проверяем права на socket
+        if [ ! -w /var/run/docker.sock ] 2>/dev/null; then
+            warn "Нет прав доступа к Docker."
+            echo "Добавляю пользователя в группу docker..."
+            sudo usermod -aG docker "$USER"
+            echo ""
+            ok "Группа docker добавлена."
+            echo -e "${YELLOW}Важно:${NC} нужно перезайти в сессию для применения прав."
+            echo "Варианты:"
+            echo "  1) Выйти и зайти заново (рекомендуется)"
+            echo "  2) Выполнить: newgrp docker"
+            echo "  Затем снова: bash ~/ugolek-install.sh"
+            exit 0
+        fi
         warn "Docker daemon не запущен. Запускаю..."
         sudo systemctl start docker
         sleep 2
