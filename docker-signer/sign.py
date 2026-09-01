@@ -31,9 +31,9 @@ def get_anisette():
     """Get anisette data from local Anisette.py provider."""
     try:
         from anisette.anisette import Anisette
-        # Use local provider (no external server needed)
-        provider = Anisette()
-        data = provider.get_data()
+        # Initialize (downloads library data from internet on first run)
+        anisette = Anisette.init()
+        data = anisette.get_data()
         if data:
             return {
                 "X-Apple-I-Client-Time": data.get("X-Apple-I-Client-Time", ""),
