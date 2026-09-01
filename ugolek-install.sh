@@ -65,16 +65,25 @@ get_udid() {
 check_iphone() {
     step "Проверка iPhone"
     # Попробовать через usbmuxd если доступен
-    if command -v idevice_id >/dev/null 2>&1; then
-        UDID=$(idevice_id -l 2>/dev/null | head -1)
+    UDID=$(idevice_id -l 2>/dev/null | head -1)
+    if [ -z "$UDID" ]; then
+        warn "iPhone не найден. Разблокируй телефон и нажми «Доверять»."
+        echo "Ожидание подключения (Ctrl+C для отмены)..."
+        for i in $(seq 1 30); do
+            sleep 2
+            UDID=$(idevice_id -l 2>/dev/null | head -1)
+            if [ -n "$UDID" ]; then break; fi
+            echo "  попытка $i: ещё не виден..."
+        done
     fi
     if [ -z "$UDID" ]; then
-        warn "iPhone не найден. Подключи по USB и разблокируй."
-        read -rp "Нажми Enter когда готов..."
-        UDID=$(idevice_id -l 2>/dev/null | head -1)
-    fi
-    if [ -z "$UDID" ]; then
-        err "iPhone всё ещё не виден. Проверь кабель и «Доверять»."
+        err "iPhone не обнаружен за 60 секунд."
+        echo ""
+        echo "Проверь:"
+        echo "  1) Кabel подключён (попробуй другой порт USB)"
+        echo "  2) iPhone разблокирован"
+        echo "  3) На экране iPhone нажми «Доверять этому компьютеру»"
+        echo "  4) Перезапусти usbmuxd: sudo systemctl restart usbmuxd"
         exit 1
     fi
     ok "iPhone найден: $UDID"
