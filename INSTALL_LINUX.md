@@ -18,9 +18,10 @@
 
 ---
 
-## 🟢 Способ 1: Бесплатный (AltServer + бесплатный Apple ID)
+## 🟢 Способ 1: Бесплатный (ipasideloader + бесплатный Apple ID)
 
-> Использует тот же механизм, что AltStore на Windows/macOS. Подпись на 7 дней с автоматическим продлением.
+> Использует тот же механизм, что AltStore. Подпись на 7 дней с автоматическим продлением.
+> Подпись выполняется в Docker-контейнере через [ipasideloader](https://github.com/heycodngskills/ipasideloader).
 
 ### Быстрый старт (2 команды)
 
@@ -33,9 +34,10 @@ bash ~/ugolek-install.sh
 ```
 
 Скрипт сам:
-1. Установит Docker (если нет) и запустит **anisette-v3-server** (эмулирует Mac для Apple)
-2. Скачает **AltServer-Linux**
-3. Скачает IPA, подпишет через твой бесплатный Apple ID и установит на iPhone
+1. Установит Docker (если нет) и добавит тебя в группу `docker`
+2. Скачает **ipasideloader** (инструмент для подписи)
+3. Подпишет IPA через твой бесплатный Apple ID в Docker
+4. Установит подписанный IPA на iPhone через pymobiledevice3
 
 ### Требования
 
@@ -43,16 +45,16 @@ bash ~/ugolek-install.sh
 - iPhone с iOS 17+, подключённый по USB
 - Бесплатный Apple ID
 - Docker (скрипт установит если нет)
-- Пользователь в группе `docker` (скрипт добавит и попросит перезайти)
 
 ### Процесс при первом запуске
 
 ```
 1. Выбери способ: 1 (бесплатно)
-2. Подключи iPhone по USB
-3. Введи email и пароль от Apple ID
-4. Когда попросит 2FA — введи код с iPhone
-5. Готово! Приложение на рабочем столе
+2. Введи пароль sudo для добавления в группу docker
+3. Подключи iPhone по USB
+4. Введи email и пароль от Apple ID
+5. Когда попросит 2FA — введи код с iPhone
+6. Готово! Приложение на рабочем столе
 ```
 
 ### Продление подписи
@@ -60,8 +62,6 @@ bash ~/ugolek-install.sh
 Подпись живёт **7 дней**. Чтобы продлить:
 - Перезапусти скрипт: `bash ~/ugolek-install.sh`
 - Или поставь напоминание раз в неделю
-
-> Важно: anisette-сервер должен быть запущен (скрипт сам проверяет и запускает).
 
 ---
 
@@ -140,15 +140,14 @@ bash ~/ugolek-install.sh
 
 ## Устранение проблем
 
-### Бесплатный способ (AltServer)
+### Бесплатный способ (ipasideloader)
 
 | Симптом | Решение |
 |---------|---------|
 | `permission denied... docker.sock` | Нет прав на Docker. Скрипт добавит в группу `docker` — перезайди в сессию и запусти заново |
-| `anisette-сервер не запускается` | `docker ps -a`, `docker logs anisette` — проверь логи |
-| Ошибка `-36607` | Неверные anisette-данные, перезапусти anisette: `docker restart anisette` |
-| `AltServer не видит iPhone` | `sudo systemctl restart usbmuxd`, разблокируй iPhone |
+| `iPhone не найден` | Разблокируй iPhone, нажми «Доверять», проверь кабель |
 | 2FA не приходит | Настройки iPhone → Пароль → Получить код вручную |
+| `Подпись не удалась` | Проверь Apple ID и пароль; попробуй другой Apple ID |
 | Подпись истекла (7 дней) | Перезапусти скрипт |
 
 ### Платный способ (zsign)
@@ -168,8 +167,7 @@ bash ~/ugolek-install.sh
 
 ```bash
 # Бесплатный способ
-docker stop anisette && docker rm anisette
-rm -rf ~/ugolek-tools ~/Ugolek
+rm -rf ~/ipasideloader ~/ugolek-venv ~/Ugolek
 
 # Платный способ
 rm -rf ~/ugolek-sign ~/ugolek-venv ~/Ugolek

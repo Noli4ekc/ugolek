@@ -118,5 +118,5 @@ iOS-приложение **«Уголёк» (Ugolek)** — автоматиче�
 
 ### Установка IPA на Fedora Linux
 См. INSTALL_LINUX.md — два способа:
-- **Бесплатный** (AltServer + anisette-v3-server, подпись 7 дней)
+- **Бесплатный** (ipasideloader + Docker + бесплатный Apple ID, подпись 7 дней)
 - **Платный** (zsign + pymobiledevice3 + Apple Developer $99/год, подпись 1 год)

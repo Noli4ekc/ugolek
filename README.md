@@ -56,7 +56,7 @@ iOS-приложение, которое автоматически продле
 
 Два способа — бесплатный и платный. Подробности и скрипт: [INSTALL_LINUX.md](INSTALL_LINUX.md).
 
-- **Бесплатно** — AltServer + бесплатный Apple ID (подпись 7 дней)
+- **Бесплатно** — ipasideloader + бесплатный Apple ID (подпись 7 дней)
 - **Платно** — Apple Developer Program $99/год (подпись 1 год)
 
 ### Через Sideloadly (Windows/macOS)

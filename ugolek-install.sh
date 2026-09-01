@@ -12,7 +12,6 @@ err()  { echo -e "${RED}✗${NC} $1"; }
 step() { echo -e "\n${YELLOW}━━━ $1 ━━━${NC}"; }
 
 # ═══ Выбор способа установки ═══
-# Флаг --docker-ready: перезапуск после добавления в группу docker (меню не показывать)
 if [ "$1" = "--docker-ready" ]; then
     INSTALL_MODE="free"
     echo -e "${GREEN}Продолжаем бесплатную установку (группа docker применена).${NC}"
@@ -23,9 +22,9 @@ else
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║  Доступно два способа:                                      ║${NC}"
     echo -e "${CYAN}║                                                              ║${NC}"
-    echo -e "${CYAN}║  ${GREEN}1) Бесплатно${CYAN} — AltServer + бесплатный Apple ID             ║${NC}"
+    echo -e "${CYAN}║  ${GREEN}1) Бесплатно${CYAN} — ipasideloader + бесплатный Apple ID        ║${NC}"
     echo -e "${CYAN}║     Подпись на 7 дней, автопродление с ПК                    ║${NC}"
-    echo -e "${CYAN}║     Требует: Docker (anisette-server)                        ║${NC}"
+    echo -e "${CYAN}║     Требует: Docker                                          ║${NC}"
     echo -e "${CYAN}║                                                              ║${NC}"
     echo -e "${CYAN}║  ${YELLOW}2) Платно${CYAN}   — Apple Developer Program ($99/год)          ║${NC}"
     echo -e "${CYAN}║     Подпись на 1 год, без ограничений                        ║${NC}"
@@ -33,7 +32,7 @@ else
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Какой способ использовать?"
-    echo -e "  ${GREEN}1${NC}) Бесплатно (AltServer, 7 дней)"
+    echo -e "  ${GREEN}1${NC}) Бесплатно (ipasideloader, 7 дней)"
     echo -e "  ${YELLOW}2${NC}) Платно (Apple Developer, 1 год)"
     echo ""
     read -rp "Выбор [1/2]: " MODE
@@ -45,7 +44,7 @@ else
     else
         INSTALL_MODE="free"
         echo ""
-        echo -e "${GREEN}Выбран бесплатный способ (AltServer + бесплатный Apple ID).${NC}"
+        echo -e "${GREEN}Выбран бесплатный способ (ipasideloader + бесплатный Apple ID).${NC}"
     fi
 fi
 
@@ -53,18 +52,8 @@ IPA_DIR="$HOME/Ugolek"
 mkdir -p "$IPA_DIR" && cd "$IPA_DIR"
 
 # ═══ Общие функции ═══
-get_udid() {
-    if command -v idevice_id >/dev/null 2>&1; then
-        UDID=$(idevice_id -l 2>/dev/null | head -1)
-    elif [ -f "$HOME/ugolek-venv/bin/pymobiledevice3" ]; then
-        UDID=$("$HOME/ugolek-venv/bin/pymobiledevice3" lockdown wifi-connection-information 2>/dev/null | grep -oP 'UDID:\s*\K.*' | head -1)
-    fi
-    echo "$UDID"
-}
-
 check_iphone() {
     step "Проверка iPhone"
-    # Попробовать через usbmuxd если доступен
     UDID=$(idevice_id -l 2>/dev/null | head -1)
     if [ -z "$UDID" ]; then
         warn "iPhone не найден. Перезапускаю usbmuxd..."
@@ -103,12 +92,12 @@ download_ipa() {
 }
 
 # ══════════════════════════════════════════════════════════════
-# БЕСПЛАТНЫЙ ПУТЬ — AltServer-Linux + anisette-v3-server
+# БЕСПЛАТНЫЙ ПУТЬ — ipasideloader + Docker
 # ══════════════════════════════════════════════════════════════
 install_free() {
-    step "Бесплатная установка через AltServer"
+    step "Бесплатная установка через ipasideloader"
 
-    # --- Docker для anisette-server ---
+    # --- Docker ---
     if ! command -v docker >/dev/null 2>&1; then
         warn "Docker не найден. Устанавливаю..."
         sudo dnf install -y docker
@@ -124,9 +113,8 @@ install_free() {
 
     # Проверяем что docker работает и есть права
     if ! docker info >/dev/null 2>&1; then
-        # Проверяем состоит ли пользователь в группе docker
         if ! groups | grep -q docker; then
-            warn "Для работы anisette-сервера нужна группа docker."
+            warn "Для работы Docker нужна группа docker."
             echo "Скрипт добавит тебя в группу. Введи пароль суперпользовода:"
             echo ""
             read -rsp "Пароль: " SUDO_PASS; echo ""
@@ -139,59 +127,24 @@ install_free() {
             exec sg docker -c "bash $0 --docker-ready"
             exit 0
         fi
-        # Группа есть но daemon не запущен
         warn "Docker daemon не запущен. Запускаю..."
         sudo systemctl start docker
         sleep 2
-        # Перепроверяем
-        if ! docker info >/dev/null 2>&1; then
-            err "Docker всё ещё недоступен. Выполни вручную:"
-            echo "  sudo systemctl start docker"
-            echo "  sudo chmod 666 /var/run/docker.sock"
-            exit 1
-        fi
     fi
 
-    # --- anisette-v3-server ---
-    step "Anisette-сервер (эмуляция Mac для Apple)"
-    if docker ps | grep -q anisette; then
-        ok "anisette-сервер уже работает"
+    # --- ipasideloader ---
+    step "ipasideloader (подпись IPA)"
+    IPALOADER_DIR="$HOME/ipasideloader"
+    if [ -d "$IPALOADER_DIR" ]; then
+        ok "ipasideloader уже скачан"
     else
-        echo "Запускаю anisette-v3-server..."
-        docker run -d --restart always --name anisette \
-          -p 6969:6969 \
-          -v anisette_data:/home/Alcoholic/.config/anisette-v3/lib/ \
-          dadoum/anisette-v3-server 2>/dev/null || {
-            warn "Не удалось запустить anisette. Попробую alt-anisette-server..."
-            docker run -d --restart always --name anisette \
-              -p 6969:6969 \
-              nyamisty/alt_anisette_server
-        }
-        sleep 3
-        ok "anisette-сервер запущен на http://127.0.0.1:6969"
+        echo "Скачиваю ipasideloader..."
+        git clone -q https://github.com/heycodngskills/ipasideloader.git "$IPALOADER_DIR"
+        ok "ipasideloader скачан в $IPALOADER_DIR"
     fi
 
-    # --- AltServer-Linux ---
-    step "AltServer-Linux"
-    ALT_BIN="$HOME/ugolek-tools/AltServer"
-    if [ -f "$ALT_BIN" ]; then
-        ok "AltServer уже установлен"
-    else
-        echo "Скачиваю AltServer-Linux..."
-        mkdir -p "$HOME/ugolek-tools"
-        # Скачиваем последний релиз
-        ALT_URL=$(curl -sL https://api.github.com/repos/NyaMisty/AltServer-Linux/releases/latest | grep browser_download_url | grep x86_64 | head -1 | cut -d'"' -f4)
-        if [ -z "$ALT_URL" ]; then
-            # Фолбэк на известный релиз
-            ALT_URL="https://github.com/NyaMisty/AltServer-Linux/releases/download/0.0.1 AltServer-x86_64"
-        fi
-        wget -q --show-progress -O "$ALT_BIN" "$ALT_URL"
-        chmod +x "$ALT_BIN"
-        ok "AltServer установлен: $ALT_BIN"
-    fi
-
-    # --- Зависимости для AltServer ---
-    step "Зависимости"
+    # --- Зависимости для установки ---
+    step "Зависимости для установки"
     MISSING=""
     for pkg in usbmuxd libimobiledevice-utils libimobiledevice; do
         if ! rpm -q "$pkg" >/dev/null 2>&1; then MISSING="$MISSING $pkg"; fi
@@ -205,6 +158,18 @@ install_free() {
     fi
     ok "Зависимости на месте"
 
+    # pymobiledevice3 для установки подписанного IPA
+    VENV_DIR="$HOME/ugolek-venv"
+    if [ ! -f "$VENV_DIR/bin/pymobiledevice3" ]; then
+        echo "Устанавливаю pymobiledevice3..."
+        python3 -m venv "$VENV_DIR"
+        source "$VENV_DIR/bin/activate"
+        pip install -q pymobiledevice3
+        ok "pymobiledevice3 установлен"
+    else
+        ok "pymobiledevice3 уже установлен"
+    fi
+
     # --- Скачивание IPA ---
     download_ipa
 
@@ -214,28 +179,48 @@ install_free() {
     # --- Авторизация Apple ID ---
     step "Авторизация Apple ID"
     echo "Введи данные от бесплатного Apple ID."
-    echo -e "${YELLOW}Внимание:${NC} пароль передаётся напрямую в Apple (как в AltStore)."
+    echo -e "${YELLOW}Внимание:${NC} пароль передаётся напрямую в Apple."
     read -rp "Email Apple ID: " APPLE_EMAIL
     read -rsp "Пароль: " APPLE_PASS; echo ""
 
-    # --- Подписываем и устанавливаем ---
-    step "Подпись и установка (бесплатно, 7 дней)"
-    echo "Подписываю и устанавливаю на iPhone..."
-    echo "Когда появится запрос 2FA — введи код."
+    # --- Подпись через ipasideloader в Docker ---
+    step "Подпись IPA (бесплатно, 7 дней)"
+    echo "Подписываю через ipasideloader..."
 
-    export ALTSERVER_ANISETTE_SERVER="http://127.0.0.1:6969"
-    export ALTSERVER_NO_SUBSCRIBE=1
+    # Создаём workdir для ipasideloader
+    WORKDIR="$IPA_DIR/ipasideloader-work"
+    mkdir -p "$WORKDIR"
+    cp "$IPA_DIR/Ugolek-unsigned.ipa" "$WORKDIR/"
 
-    # AltServer подпишет и установит напрямую на устройство
-    "$ALT_BIN" -u "$UDID" -a "$APPLE_EMAIL" -p "$APPLE_PASS" "$IPA_DIR/Ugolek-unsigned.ipa"
+    # Запускаем подпись в Docker
+    docker compose -f "$IPALOADER_DIR/docker-compose.yml" build 2>/dev/null || {
+        warn "Docker build занял время, продолжаю..."
+    }
+
+    # Подпись с бесплатным Apple ID
+    docker compose -f "$IPALOADER_DIR/docker-compose.yml" run --rm ipasideloader \
+      sign-install /work/Ugolek-unsigned.ipa \
+      --apple-id "$APPLE_EMAIL" \
+      --apple-password "$APPLE_PASS" \
+      --no-install -o /work/Ugolek-signed.ipa 2>&1
+
+    if [ ! -f "$WORKDIR/Ugolek-signed.ipa" ]; then
+        err "Подпись не удалась. Проверь Apple ID и пароль."
+        exit 1
+    fi
+    ok "IPA подписан"
+
+    # --- Установка на iPhone ---
+    step "Установка на iPhone"
+    source "$VENV_DIR/bin/activate"
+    pymobiledevice3 apps install "$WORKDIR/Ugolek-signed.ipa"
 
     echo ""
     echo "═══════════════════════════════════════════════════════"
     echo -e "${GREEN}  Готово! 🔥${NC}"
     echo "═══════════════════════════════════════════════════════"
     echo "Подпись живёт 7 дней. Чтобы продлить:"
-    echo "  1. Держи этот ПК включённым с запущенным anisette"
-    echo "  2. Перезапусти скрипт: bash ~/ugolek-install.sh"
+    echo "  Перезапусти скрипт: bash ~/ugolek-install.sh"
     echo ""
     echo "На iPhone: Настройки → Основные → VPN → доверь Apple ID."
 }
