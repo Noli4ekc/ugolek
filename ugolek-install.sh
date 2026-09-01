@@ -132,17 +132,6 @@ install_free() {
         sleep 2
     fi
 
-    # --- ipasideloader ---
-    step "ipasideloader (подпись IPA)"
-    IPALOADER_DIR="$HOME/ipasideloader"
-    if [ -d "$IPALOADER_DIR" ]; then
-        ok "ipasideloader уже скачан"
-    else
-        echo "Скачиваю ipasideloader..."
-        git clone -q https://github.com/heycodngskills/ipasideloader.git "$IPALOADER_DIR"
-        ok "ipasideloader скачан в $IPALOADER_DIR"
-    fi
-
     # --- Зависимости для установки ---
     step "Зависимости для установки"
     MISSING=""
@@ -205,14 +194,9 @@ install_free() {
         ok "Креды сохранены в системном keyring"
     fi
 
-    # --- Подпись через ipasideloader в Docker ---
+    # --- Подпись через Docker ---
     step "Подпись IPA (бесплатно, 7 дней)"
-    echo "Подписываю через ipasideloader..."
-
-    # Создаём workdir для ipasideloader
-    WORKDIR="$IPA_DIR/ipasideloader-work"
-    mkdir -p "$WORKDIR"
-    cp "$IPA_DIR/Ugolek-unsigned.ipa" "$WORKDIR/"
+    echo "Подписываю через Docker..."
 
     # Определяем docker compose v1 или v2
     if docker compose version >/dev/null 2>&1; then
@@ -233,17 +217,19 @@ install_free() {
         ok "docker compose установлен"
     fi
 
-    # Запускаем подпись в Docker
-    $DC -f "$IPALOADER_DIR/docker-compose.yml" build 2>/dev/null || {
-        warn "Docker build занял время, продолжаю..."
-    }
+    # Путь к docker-signer
+    SIGNER_DIR="$IPA_DIR/docker-signer"
+    WORKDIR="$IPA_DIR/sign-work"
+    mkdir -p "$WORKDIR"
+    cp "$IPA_DIR/Ugolek-unsigned.ipa" "$WORKDIR/"
 
-    # Подпись с бесплатным Apple ID
-    $DC -f "$IPALOADER_DIR/docker-compose.yml" run --rm ipasideloader \
-      sign-install /work/Ugolek-unsigned.ipa \
+    # Собираем и запускаем
+    $DC -f "$SIGNER_DIR/docker-compose.yml" build 2>&1 || true
+    $DC -f "$SIGNER_DIR/docker-compose.yml" run --rm signer \
+      /work/Ugolek-unsigned.ipa \
       --apple-id "$APPLE_EMAIL" \
       --apple-password "$APPLE_PASS" \
-      --no-install -o /work/Ugolek-signed.ipa 2>&1
+      --output /work/Ugolek-signed.ipa 2>&1
 
     if [ ! -f "$WORKDIR/Ugolek-signed.ipa" ]; then
         err "Подпись не удалась. Проверь Apple ID и пароль."
